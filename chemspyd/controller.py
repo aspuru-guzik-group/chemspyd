@@ -122,7 +122,7 @@ class ChemspeedController(object):
         src_flow: float = 10,
         dst_flow: float = 10,
         src_bu: float = 3,
-        dst_td: float = 0,
+        dst: float = 0,
         rinse_volume: float = 2,
         needle: int = 0,
         airgap: float = 0.01,
@@ -133,7 +133,8 @@ class ChemspeedController(object):
         equib_src: float = 0,
         equib_dst: float = 0,
         rinse_stn: int = 1,
-        multiple_aspirations: bool = False
+        multiple_asp: bool = False,
+        bu: bool = False
     ):
         """Transfer liquid in Chemspeed.
         
@@ -144,7 +145,7 @@ class ChemspeedController(object):
             src_flow: draw speed at source (0.05 mL/min <= src_flow <= 125 mL/min)
             dst_flow: dispense speed at destination (0.05 mL/min <= src_flow <= 125 mL/min)
             src_bu: needle bottoms up distance at source (mm)
-            dst_td: needle top down distance at destination (mm)
+            dst: needle distance at destination (mm)
             rinse_volume: needle rinsing volume after action (mL)
             needle: the limited needle to use, 0 means select all, 12 means needles 1 and 2
             airgap: airgap volume (mL)
@@ -155,13 +156,13 @@ class ChemspeedController(object):
             euqib_src: equilibration time when drawing from source (s)
             equib_dst: equilibration time when dispensing to destination (s)
             rinse_stn: rinse station corresponding to Waste 1 or Waste 2
-            multi_asp: multiple
+            multi_asp: whether multiple aspirations are allowed
+            bu: true if dst is bottom-up, false if
+
         """
         # checking that all parameters are valid:
         if not cv.validate_zones(self.valid_zones, source) or not cv.validate_zones(self.valid_zones, destination):
             print('Invalid zones')
-
-
 
         source = to_zone_string(source)
         destination = to_zone_string(destination)
@@ -173,7 +174,7 @@ class ChemspeedController(object):
             src_flow,
             dst_flow,
             src_bu,
-            dst_td,
+            dst,
             rinse_volume,
             needle,
             airgap,
@@ -184,48 +185,68 @@ class ChemspeedController(object):
             equib_src,
             equib_dst,
             rinse_stn,
-            int(multiple_aspirations)
+            int(multiple_asp),
+            int(bu)
         )
 
-    def transfer_liquid_bu(
-        self,
-        source: Zones,
-        destination: Zones,
-        volume: float,
-        src_flow: float = 10,
-        dst_flow: float = 10,
-        src_bu: float = 3,
-        dst_bu: float = 0,
-        rinse_volume: float = 2,
-        needle: int = 0,
-    ):
-        """Transfer liquid in Chemspeed. Destination bottoms up version. Commonly used in injection valves.
-        
-        Args (float for non specified type):
-            source (str, list): zone for transfer source
-            destination (str, list): zone for destination of transfer
-            volume: volume to transfer (mL)
-            src_flow: draw speed at source (mL/min)
-            dst_flow: dispense speed at destination (mL/min)
-            src_bu: needle bottoms up distance at source (mm)
-            dst_bu: needle bottoms up distance at destination (mm)
-            rinse_volume: needle rinsing volume after action (mL)
-            needle: the limited needle to use, 0 means select all
-        """
-        source = to_zone_string(source)
-        destination = to_zone_string(destination)
-        self.execute(
-            'transfer_liquid_bu',
-            source,
-            destination,
-            volume,
-            src_flow,
-            dst_flow,
-            src_bu,
-            dst_bu,
-            rinse_volume,
-            needle,
-        )
+
+    # def transfer_liquid_bu(
+    #     self,
+    #     source: Zones,
+    #     destination: Zones,
+    #     volume: float,
+    #     src_flow: float = 10,
+    #     dst_flow: float = 10,
+    #     src_bu: float = 3,
+    #     dst_bu: float = 0,
+    #     rinse_volume: float = 2,
+    #     needle: int = 0,
+    #     airgap: float = 0.01,
+    #     post_airgap: float = 0,
+    #     extra_volume: float = 0,
+    #     airgap_dst: Zones = 'WASTE',
+    #     extra_dst: Zones = 'WASTE',
+    #     equib_src: float = 0,
+    #     equib_dst: float = 0,
+    #     rinse_stn: int = 1,
+    #     multiple_aspirations: bool = False
+    # ):
+    #     """Transfer liquid in Chemspeed. Destination bottoms up version. Commonly used in injection valves.
+    #
+    #     Args (float for non specified type):
+    #         source (str, list): zone for transfer source
+    #         destination (str, list): zone for destination of transfer
+    #         volume: volume to transfer (mL)
+    #         src_flow: draw speed at source (mL/min)
+    #         dst_flow: dispense speed at destination (mL/min)
+    #         src_bu: needle bottoms up distance at source (mm)
+    #         dst_bu: needle bottoms up distance at destination (mm)
+    #         rinse_volume: needle rinsing volume after action (mL)
+    #         needle: the limited needle to use, 0 means select all
+    #     """
+    #     source = to_zone_string(source)
+    #     destination = to_zone_string(destination)
+    #     self.execute(
+    #         'transfer_liquid_bu',
+    #         source,
+    #         destination,
+    #         volume,
+    #         src_flow,
+    #         dst_flow,
+    #         src_bu,
+    #         dst_bu,
+    #         rinse_volume,
+    #         needle,
+    #         airgap,
+    #         post_airgap,
+    #         extra_volume,
+    #         airgap_dst,
+    #         extra_dst,
+    #         equib_src,
+    #         equib_dst,
+    #         rinse_stn,
+    #         int(multiple_aspirations)
+    #     )
 
     def inject_liquid(
         self,
