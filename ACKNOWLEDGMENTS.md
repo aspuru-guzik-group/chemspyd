@@ -1,15 +1,3 @@
-# ChemsPyd
-A Python API for the Chemspeed AutoSuite software.
-
-# Installation
-How should you install ChemsPyd?
-
-# Usage
-How should you use ChemsPyd?
-
-# Features
-What are ChemsPyd's features?
-
 # Acknowledgments
 
 The following people are acknowledged for assisting in the development of ChemsPyd and its functionality in various ways:
