@@ -1,7 +1,6 @@
-'''
+"""
 This file contains the functionality for the checking of user inputs into the chemspeed controller.
-
-'''
+"""
 from typing import List, Union, Any
 import os
 import time

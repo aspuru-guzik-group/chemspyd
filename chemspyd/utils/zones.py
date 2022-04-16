@@ -56,8 +56,6 @@ def zones(zone: str, *wells):
     return [zone + ':' + str(w) for w in wells]
 
 
-
-
 class Zones(object):
     """
     holds and manages the zones for chemspeed

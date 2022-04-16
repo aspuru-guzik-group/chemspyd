@@ -1,21 +1,14 @@
-from typing import List, Union, Any
+from typing import List, Union
 import os
 import time
 
-import chemspeed_validators as cv
+import validate
 from utils.zones import Zones, to_zone_string
 import utils.unit_conversions as units
 
 if os.name == 'nt':
     import msvcrt
 
-
-
-
-
-
-
-# Chemspeed Controller
 
 class ChemspeedController(object):
     """Controller class for the Chemspeed platform.
@@ -41,7 +34,7 @@ class ChemspeedController(object):
         self.stdout = stdout
         self.logfile = logfile
         self.simulation = simulation
-        self.valid_zones = cv.init_valid_zones()
+        self.valid_zones = validate.init_valid_zones()
 
     #############################
     # Chemspeed Remote Statuses #
@@ -77,6 +70,7 @@ class ChemspeedController(object):
             *args (list): List of arguments for the command.
         """
         args_line = ','.join([str(arg) for arg in args])
+        # TODO: Repalce with f strings for readability?
         exec_message = 'Execute: {}({})'.format(command, args_line.replace(',', ', '))
 
         # skip everything if simulation
@@ -87,16 +81,19 @@ class ChemspeedController(object):
         # send to file
         while self.chemspeed_blocked():
             time.sleep(0.1)
+        # TODO: Repalce with f strings for readability?
         with open(self.cmd_file, 'w') as f:
             # set new command to true, and the command name
             f.write('1,{}\n'.format(command))
             f.write('{},end'.format(args_line))
 
         # stdout & loggin
+        # TODO: Repalce with f strings for readability?
         exec_message = 'Execute: {}({})'.format(command, args_line.replace(',', ', '))
         if self.stdout:
             print(exec_message, end='', flush=True)
         if self.logfile != '':
+            # TODO: Replace with built-in logging?
             with open(self.logfile, 'a') as f:
                 f.write(f'{exec_message}\n')
 
@@ -161,7 +158,8 @@ class ChemspeedController(object):
 
         """
         # checking that all parameters are valid:
-        if not cv.validate_zones(self.valid_zones, source) or not cv.validate_zones(self.valid_zones, destination):
+        if not validate.validate_zones(self.valid_zones, source) or not validate.validate_zones(self.valid_zones, destination):
+            # TODO: Raise custom error.
             print('Invalid zones')
 
         source = to_zone_string(source)
@@ -398,7 +396,8 @@ class ChemspeedController(object):
         )
 
     def set_drawer(self, zone: Zones, state: str, environment: str = 'none'):
-        """Setting ISYNTH drawer position. For accessing the vials in ISYNTH. Can set the vials under vacuum, inert or none state.
+        """Setting ISYNTH drawer position. For accessing the vials in ISYNTH.
+        Can set the vials under vacuum, inert or none state.
         
         Args:
             zone (str, list): zones for setting drawer state, has to be in ISYNTH
@@ -408,6 +407,7 @@ class ChemspeedController(object):
         zone = to_zone_string(zone)
         self.execute('set_drawer', zone, state, environment)
 
+    # TODO: Remove ISYNTH-specific methods? Or give deprecation method.
     def set_isynth_reflux(self, state: str, temperature: float = 15):
         """Setting ISYNTH reflux chilling temperature.
         
@@ -417,6 +417,7 @@ class ChemspeedController(object):
         """
         self.execute('set_isynth_reflux', state, temperature)
 
+    # TODO: Remove ISYNTH-specific methods? Or give deprecation method.
     def set_isynth_temperature(self, state: str, temperature: float = 15, ramp: float = 0):
         """Setting ISYNTH heating temperature.
         
@@ -427,6 +428,7 @@ class ChemspeedController(object):
         """
         self.execute('set_isynth_temperature', state, temperature, ramp)
 
+    # TODO: Remove ISYNTH-specific methods? Or give deprecation method.
     def set_isynth_stir(self, state: str, rpm: float = 200):
         """Setting ISYNTH vortex speed.
         
@@ -444,11 +446,13 @@ class ChemspeedController(object):
             state (str): stir state (on, off)
             rpm (float): stir rotation speed (rpm)
         """
+        # TODO: Add custom errors
         assert stir_zone == 'ISYNTH' or stir_zone == 'RACK_HS', f'{stir_zone} zone not stirrable.'
         assert (stir_zone == 'RACK_HS' and rpm <= 400) or (stir_zone == 'ISYNTH' and rpm <= 1600), f'RPM out of range for {stir_zone}.'
         self.unmount_all()
         self.execute('set_stir', stir_zone, state, rpm)
 
+    # TODO: Remove ISYNTH-specific methods? Or give deprecation method.
     def set_isynth_vacuum(self, state: str, vacuum: float = 1000):
         """Setting ISYNTH vacuum pressure.
         
@@ -459,7 +463,9 @@ class ChemspeedController(object):
         self.execute('set_isynth_vacuum', state, vacuum)
 
     def set_isynth(self, **kwargs: Union[None, str, float]):
-        """Setting ISYNTH values. The following values can be [None, str, float]. If set at None, no change to current state. If "off" then turns off. If set to a value, then the system will turn on and set to that value. You have to specify the values to be set. For example, set_isynth(reflux=15) not set_isynth(15).
+        """Setting ISYNTH values. The following values can be [None, str, float]. If set at None, no change to current state.
+        If "off" then turns off. If set to a value, then the system will turn on and set to that value.
+        You have to specify the values to be set. For example, set_isynth(reflux=15) not set_isynth(15).
         
         Args:
             reflux: vacuum pressure level (C)
@@ -506,7 +512,8 @@ class ChemspeedController(object):
         )
 
     def set_zone_state(self, zone: Zones, state: bool = True):
-        """Setting the 'Enabled' state of the zone. Certain operations may turn off the availability of a zone. Use this to re-enable. For example, solid dispensing error may result in disabling the powder container to be used.
+        """Setting the 'Enabled' state of the zone. Certain operations may turn off the availability of a zone.
+        Use this to re-enable. For example, solid dispensing error may result in disabling the powder container to be used.
         
         Args:
             zone (str, list): zones to change the state
@@ -529,11 +536,11 @@ class ChemspeedController(object):
         return [float(l) for l in levels_str]
 
     def unmount_all(self):
-        "Unmounting all equipment from the arm"
+        """Unmounting all equipment from the arm"""
         self.execute('unmount_all')
 
     def stop_manager(self):
-        "Stopping the manager safely from the python controller"
+        """Stopping the manager safely from the python controller"""
         self.execute('stop_manager')
 
     def read_status(self, key: Union[None, str] = None) -> Union[dict, float]:
