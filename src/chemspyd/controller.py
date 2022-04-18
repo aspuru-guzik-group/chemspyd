@@ -2,9 +2,9 @@ from typing import List, Union
 import os
 import time
 
-import validate
-from utils.zones import Zones, to_zone_string
-import utils.unit_conversions as units
+from chemspyd import validate
+from chemspyd.utils.zones import Zones, to_zone_string
+from chemspyd.utils import unit_conversions as units
 
 if os.name == 'nt':
     import msvcrt

@@ -1,1 +1,1 @@
-from src.chemspyd import ChemspeedController
+from chemspyd import ChemspeedController

@@ -18,4 +18,4 @@ warn_redundant_casts = true
 warn_return_any = true
 warn_unreachable = true
 warn_unused_configs = true
-no_explicity_reexport = true
+#no_explicitly_reexport = true

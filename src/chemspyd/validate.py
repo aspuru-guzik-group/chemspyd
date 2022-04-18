@@ -4,7 +4,7 @@ This file contains the functionality for the checking of user inputs into the ch
 from typing import List, Union, Any
 import os
 import time
-from utils.zones import Zones, zones_list
+from chemspyd.utils.zones import Zones, zones_list
 
 
 def init_valid_zones() -> List[str]:
