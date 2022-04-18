@@ -40,7 +40,7 @@ def to_zone_string(zones: Zones) -> str:
     return zones
 
 
-def zones(zone: str, *wells):
+def zones_list(zone: str, *wells):
     """A helper function to easily create a list of zones
 
     Usage:
