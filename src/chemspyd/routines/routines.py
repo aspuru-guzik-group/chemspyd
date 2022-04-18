@@ -13,6 +13,7 @@ def prime_pumps(pump, vol):
 
     """
 
+
 def get_return_dst(dst: str) -> str:
     """
     Converts 'VALVEB' source to correct waste for system liquid dispensing.
@@ -23,7 +24,8 @@ def get_return_dst(dst: str) -> str:
         'VALVEB:3': 'WASTE1:3',
         'VALVEB:4': 'WASTE2:4'
     }
+    return valve2waste[dst]
+
 
 def inject_to_hplc():
     """Inject into HPLC"""
-

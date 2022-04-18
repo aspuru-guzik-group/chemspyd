@@ -1,10 +1,10 @@
-from typing import List, Union
+from typing import Dict, List, Union
 import os
 import time
 
 from chemspyd import validate
 from chemspyd.utils.zones import Zones, to_zone_string
-from chemspyd.utils import unit_conversions as units
+import chemspyd.utils.unit_conversions as units
 
 if os.name == 'nt':
     import msvcrt
@@ -14,18 +14,19 @@ class ChemspeedController(object):
     """Controller class for the Chemspeed platform.
 
     Args:
-        cmd_folder (str): the folder path containing CSV files for 
+        cmd_folder (str): the folder path containing CSV files for
             communication with the platform.
         stdout (bool): disable commandline output messages.
         logfile (str): log file path.
         simulation (bool): True to run the controller in simulation (only in python, not autosuite).
     """
-    def __init__(self, 
+
+    def __init__(self,
                  cmd_folder: str,
                  stdout: bool = True,
                  logfile: str = '',
                  simulation: bool = False,
-    ) -> None:
+                 ) -> None:
         """Initialize paths to files for communication with the platform."""
         self.cmd_file = os.path.join(cmd_folder, 'command.csv')
         self.rsp_file = os.path.join(cmd_folder, 'response.csv')
@@ -112,29 +113,29 @@ class ChemspeedController(object):
     ##################################
 
     def transfer_liquid(
-        self,
-        source: Zones,
-        destination: Zones,
-        volume: float,
-        src_flow: float = 10,
-        dst_flow: float = 10,
-        src_bu: float = 3,
-        dst: float = 0,
-        rinse_volume: float = 2,
-        needle: int = 0,
-        airgap: float = 0.01,
-        post_airgap: float = 0,
-        extra_volume: float = 0,
-        airgap_dst: Zones = 'WASTE',
-        extra_dst: Zones = 'WASTE',
-        equib_src: float = 0,
-        equib_dst: float = 0,
-        rinse_stn: int = 1,
-        multiple_asp: bool = False,
-        bu: bool = False
+            self,
+            source: Union[str, List[str]],
+            destination: Union[str, List[str]],
+            volume: float,
+            src_flow: float = 10,
+            dst_flow: float = 10,
+            src_bu: float = 3,
+            dst: float = 0,
+            rinse_volume: float = 2,
+            needle: int = 0,
+            airgap: float = 0.01,
+            post_airgap: float = 0,
+            extra_volume: float = 0,
+            airgap_dst: Union[Zones, str] = 'WASTE',
+            extra_dst: Union[Zones, str] = 'WASTE',
+            equib_src: float = 0,
+            equib_dst: float = 0,
+            rinse_stn: int = 1,
+            multiple_asp: bool = False,
+            bu: bool = False
     ):
         """Transfer liquid in Chemspeed.
-        
+
         Args (float for non specified type):
             source (str, list): zone for transfer source
             destination (str, list): zone for destination of transfer
@@ -158,7 +159,8 @@ class ChemspeedController(object):
 
         """
         # checking that all parameters are valid:
-        if not validate.validate_zones(self.valid_zones, source) or not validate.validate_zones(self.valid_zones, destination):
+        if not validate.validate_zones(self.valid_zones, source) or not validate.validate_zones(self.valid_zones,
+                                                                                                destination):
             # TODO: Raise custom error.
             print('Invalid zones')
 
@@ -186,7 +188,6 @@ class ChemspeedController(object):
             int(multiple_asp),
             int(bu)
         )
-
 
     # def transfer_liquid_bu(
     #     self,
@@ -246,17 +247,16 @@ class ChemspeedController(object):
     #         int(multiple_aspirations)
     #     )
 
-    def inject_liquid(
-        self,
-        source: Zones,
-        destination: Zones,
-        volume: float,
-        src_flow: float = 10,
-        src_bu: float = 3,
-        dst_flow: float = 0.5,
-        dst_bu: float = 0,
-        rinse_volume: float = 2,
-    ):
+    def inject_liquid(self,
+                      source: Union[str, List[str]],
+                      destination: Union[str, List[str]],
+                      volume: float,
+                      src_flow: float = 10,
+                      src_bu: float = 3,
+                      dst_flow: float = 0.5,
+                      dst_bu: float = 0,
+                      rinse_volume: float = 2,
+                      ):
         """Inject liquid to the injection ports. This will use volume+0.1ml of liquid.
 
         Args (float for non specified type):
@@ -285,24 +285,24 @@ class ChemspeedController(object):
         )
 
     def transfer_solid(
-        self,
-        source: Zones,
-        destination: Zones,
-        weight: float,
-        height: float = 0,
-        chunk: float = 0.1,
-        equilib: float = 5,
-        rd_speed: float = 30,
-        rd_acc: float = 20,
-        rd_amp: float = 100,
-        fd_amount: float = 1,
-        fd_speed: float = 30,
-        fd_acc: float = 20,
-        fd_amp: float = 40,
-        fd_num: float = 360
+            self,
+            source: Union[str, List[str]],
+            destination: Union[str, List[str]],
+            weight: float,
+            height: float = 0,
+            chunk: float = 0.1,
+            equilib: float = 5,
+            rd_speed: float = 30,
+            rd_acc: float = 20,
+            rd_amp: float = 100,
+            fd_amount: float = 1,
+            fd_speed: float = 30,
+            fd_acc: float = 20,
+            fd_amp: float = 40,
+            fd_num: float = 360
     ) -> List[float]:
         """Solid dispensing in Chemspeed.
-        
+
         Args (float for non specified type):
             source (str, list): solid zone for transfer
             destination (str, list): zone for dispensing destination
@@ -343,26 +343,26 @@ class ChemspeedController(object):
         )
         with open(self.ret_file, 'r') as f:
             weights_str = f.readline().split(',')[:-1]
-        return [float(w)*1e6 for w in weights_str]
+        return [float(w) * 1e6 for w in weights_str]
 
     def transfer_solid_swile(
-        self,
-        source: Zones,
-        destination: Zones,
-        weight: float,
-        height=0,
-        chunk=0.2,
-        equilib=2,
-        depth=15,
-        pickup=10,
-        rd_step=1,
-        fd_step=0.2,
-        fd_amount=0.5,
-        # shake_angle=0.1,
-        # shake_time=2
+            self,
+            source: Union[str, List[str]],
+            destination: Union[str, List[str]],
+            weight: float,
+            height=0,
+            chunk=0.2,
+            equilib=2,
+            depth=15,
+            pickup=10,
+            rd_step=1,
+            fd_step=0.2,
+            fd_amount=0.5,
+            # shake_angle=0.1,
+            # shake_time=2
     ):
         """Solid dispensing in Chemspeed (SWILE)
-        
+
         Args (float for non specified type):
             source (str, list): solid zone for transfer
             destination (str, list): zone for dispensing destination
@@ -395,10 +395,10 @@ class ChemspeedController(object):
             fd_amount
         )
 
-    def set_drawer(self, zone: Zones, state: str, environment: str = 'none'):
+    def set_drawer(self, zone: str, state: str, environment: str = 'none'):
         """Setting ISYNTH drawer position. For accessing the vials in ISYNTH.
         Can set the vials under vacuum, inert or none state.
-        
+
         Args:
             zone (str, list): zones for setting drawer state, has to be in ISYNTH
             state (str): drawer open state (open, close)
@@ -410,7 +410,7 @@ class ChemspeedController(object):
     # TODO: Remove ISYNTH-specific methods? Or give deprecation method.
     def set_isynth_reflux(self, state: str, temperature: float = 15):
         """Setting ISYNTH reflux chilling temperature.
-        
+
         Args:
             state (str): cryostat state (on, off)
             temperature (float): temperature to set at when cryostat is on (C)
@@ -420,7 +420,7 @@ class ChemspeedController(object):
     # TODO: Remove ISYNTH-specific methods? Or give deprecation method.
     def set_isynth_temperature(self, state: str, temperature: float = 15, ramp: float = 0):
         """Setting ISYNTH heating temperature.
-        
+
         Args:
             state (str): cryostat state (on, off)
             temperature (float): temperature to set at when cryostat is on (C)
@@ -431,14 +431,14 @@ class ChemspeedController(object):
     # TODO: Remove ISYNTH-specific methods? Or give deprecation method.
     def set_isynth_stir(self, state: str, rpm: float = 200):
         """Setting ISYNTH vortex speed.
-        
+
         Args:
             state (str): vortex state (on, off)
             rpm (float): vortex rotation speed (rpm)
         """
         self.execute('set_isynth_stir', state, rpm)
 
-    def set_stir(self, stir_zone: str, state: str, rpm: float=0):
+    def set_stir(self, stir_zone: str, state: str, rpm: float = 0):
         """Set stirring.
 
         Args:
@@ -448,14 +448,15 @@ class ChemspeedController(object):
         """
         # TODO: Add custom errors
         assert stir_zone == 'ISYNTH' or stir_zone == 'RACK_HS', f'{stir_zone} zone not stirrable.'
-        assert (stir_zone == 'RACK_HS' and rpm <= 400) or (stir_zone == 'ISYNTH' and rpm <= 1600), f'RPM out of range for {stir_zone}.'
+        assert (stir_zone == 'RACK_HS' and rpm <= 400) or (
+                stir_zone == 'ISYNTH' and rpm <= 1600), f'RPM out of range for {stir_zone}.'
         self.unmount_all()
         self.execute('set_stir', stir_zone, state, rpm)
 
     # TODO: Remove ISYNTH-specific methods? Or give deprecation method.
     def set_isynth_vacuum(self, state: str, vacuum: float = 1000):
         """Setting ISYNTH vacuum pressure.
-        
+
         Args:
             state (str): vacuum pump state (on, off)
             vacuum (float): vacuum pressure level (mbar)
@@ -466,7 +467,7 @@ class ChemspeedController(object):
         """Setting ISYNTH values. The following values can be [None, str, float]. If set at None, no change to current state.
         If "off" then turns off. If set to a value, then the system will turn on and set to that value.
         You have to specify the values to be set. For example, set_isynth(reflux=15) not set_isynth(15).
-        
+
         Args:
             reflux: vacuum pressure level (C)
             temperature: vacuum pressure level (C)
@@ -486,13 +487,13 @@ class ChemspeedController(object):
         return
 
     def vial_transport(self,
-                       source: Zones,
-                       destination: Zones,
+                       source: str,
+                       destination: str,
                        gripping_force: float = 10,
                        gripping_depth: float = 7.5,
                        push_in: bool = True):
         """ Vial Transport
-        
+
         Args (float for non specified type):
             source (str, list): vial zone for transfer
             destination (str, list): zone for vial destination
@@ -511,10 +512,10 @@ class ChemspeedController(object):
             push_in
         )
 
-    def set_zone_state(self, zone: Zones, state: bool = True):
+    def set_zone_state(self, zone: str, state: bool = True):
         """Setting the 'Enabled' state of the zone. Certain operations may turn off the availability of a zone.
         Use this to re-enable. For example, solid dispensing error may result in disabling the powder container to be used.
-        
+
         Args:
             zone (str, list): zones to change the state
             state (bool): Enable or disable (True, False)
@@ -522,9 +523,9 @@ class ChemspeedController(object):
         zone = to_zone_string(zone)
         self.execute('set_zone_state', zone, int(state))
 
-    def measure_level(self, zone: Zones):
+    def measure_level(self, zone: Union[str, List[str]]):
         """Measure material level.
-        
+
         Args:
             zone (str, list): zones to measure
         """
@@ -533,7 +534,7 @@ class ChemspeedController(object):
 
         with open(self.ret_file, 'r') as f:
             levels_str = f.readline().split(',')[:-1]
-        return [float(l) for l in levels_str]
+        return [float(level) for level in levels_str]
 
     def unmount_all(self):
         """Unmounting all equipment from the arm"""
@@ -543,9 +544,9 @@ class ChemspeedController(object):
         """Stopping the manager safely from the python controller"""
         self.execute('stop_manager')
 
-    def read_status(self, key: Union[None, str] = None) -> Union[dict, float]:
+    def read_status(self, key: Union[None, str] = None) -> Union[Dict[str, float], float]:
         """Reading the Chemspeed status during idle.
-        
+
         Args:
             key (None, str): status to read ['temperature', 'reflux', 'vacuum', 'stir', 'box_temperature']
 
@@ -581,11 +582,11 @@ class ChemspeedController(object):
         """
         dur = duration
         if self.simulation:
-            print(f"Waiting for 0 seconds")
+            print("Waiting for 0 seconds")
         else:
             print('press "q" to cancel wait')
             while duration >= 0:
-                print(f"", end=f'\rWaiting for {duration} seconds.')
+                print("", end=f'\rWaiting for {duration} seconds.')
                 time.sleep(1)
                 duration -= 1
                 if os.name == 'nt':

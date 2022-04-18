@@ -22,38 +22,7 @@ from typing import Union, List
 # WASTE (8): waste zone
 
 # Helper and conversion methods
-Zones = Union[str, List]
-
-
-def to_zone_string(zones: Zones) -> str:
-    """Return semicolon separated string of zones.
-
-    Args:
-        zones (Union[str, List]): List of zones, or string with zones separated
-            by semicolons.
-
-    Returns:
-        str: Semicolon separated list of zones.
-    """
-    if isinstance(zones, list):
-        return ';'.join(zones)
-    return zones
-
-
-def zones_list(zone: str, *wells):
-    """A helper function to easily create a list of zones
-
-    Usage:
-        zones('SOLID', 1, 2) == ['SOLID:1', 'SOLID:2']
-
-    Args:
-        zone (str): Zone name
-        *wells (list): list of well name (int or str)
-
-    Returns:
-        list: list of manager readable zones
-    """
-    return [zone + ':' + str(w) for w in wells]
+# Zones = Union[str, List]
 
 
 class Zones(object):
@@ -103,3 +72,34 @@ class Zones(object):
     #     assert well_i in range(1, self.valid_zones[name]) and well_f in range(1, self.valid_zones[name]) ,
     #
     #     return [f'{name}:{w}' for w in range(well_i, well_f + 1)]
+
+
+def to_zone_string(zones: Union[Zones, str, List[str]]) -> str:
+    """Return semicolon separated string of zones.
+
+    Args:
+        zones (Union[str, List]): List of zones, or string with zones separated
+            by semicolons.
+
+    Returns:
+        str: Semicolon separated list of zones.
+    """
+    if isinstance(zones, list):
+        return ';'.join(zones)
+    return str(zones)
+
+
+def zones_list(zone: str, *wells):
+    """A helper function to easily create a list of zones
+
+    Usage:
+        zones('SOLID', 1, 2) == ['SOLID:1', 'SOLID:2']
+
+    Args:
+        zone (str): Zone name
+        *wells (list): list of well name (int or str)
+
+    Returns:
+        list: list of manager readable zones
+    """
+    return [zone + ':' + str(w) for w in wells]
