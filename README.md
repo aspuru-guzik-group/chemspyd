@@ -1,5 +1,7 @@
 # ChemsPyd
 A Python API for the Chemspeed AutoSuite software.
+[![Testing](https://github.com/aspuru-guzik-group/chemspyd/actions/workflows/test.yml/badge.svg)](https://github.com/aspuru-guzik-group/chemspyd/actions/workflows/test.yml)
+
 
 # Installation
 How should you install ChemsPyd?
