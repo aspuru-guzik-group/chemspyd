@@ -1,5 +1,7 @@
 [![Testing](https://github.com/aspuru-guzik-group/chemspyd/actions/workflows/tests.yml/badge.svg)](https://github.com/aspuru-guzik-group/chemspyd/actions/workflows/tests.yml)
 
+Woohoo! Passing `flake8` and `mypy`. Now on to `pytest`...
+
 # ChemsPyd
 A Python API for the Chemspeed AutoSuite software.
 
