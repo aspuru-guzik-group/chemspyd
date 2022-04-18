@@ -1,4 +1,4 @@
-[![Testing](https://github.com/aspuru-guzik-group/chemspyd/actions/workflows/test.yml/badge.svg)](https://github.com/aspuru-guzik-group/chemspyd/actions/workflows/test.yml)
+[![Testing](https://github.com/aspuru-guzik-group/chemspyd/actions/workflows/tests.yml/badge.svg)](https://github.com/aspuru-guzik-group/chemspyd/actions/workflows/tests.yml)
 
 # ChemsPyd
 A Python API for the Chemspeed AutoSuite software.
