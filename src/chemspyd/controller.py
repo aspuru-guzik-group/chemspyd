@@ -590,8 +590,11 @@ class ChemspeedController(object):
                 time.sleep(1)
                 duration -= 1
                 if os.name == 'nt':
-                    if msvcrt.kbhit() and msvcrt.getwch() == 'q':
+                    # FIXME: Temporarily putting a type ignore here. Should fix to also allow
+                    #  catching keyboard input from other OSs.
+                    if msvcrt.kbhit() and msvcrt.getwch() == 'q':  # type: ignore[attr-defined]
                         print("\nWait cancelled")
+                        # FIXME: Shouldn't this be a break?
                         duration = -1
 
         print(f'Finished waiting for {dur} seconds')
