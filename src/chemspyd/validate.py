@@ -2,7 +2,7 @@
 This file contains the functionality for the checking of user inputs into the chemspeed controller.
 """
 from typing import List, Union
-from .utils import Zones, zones_list
+from chemspyd.utils import Zones, zones_list
 
 
 def init_valid_zones() -> List[str]:
