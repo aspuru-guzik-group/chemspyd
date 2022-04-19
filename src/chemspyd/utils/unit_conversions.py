@@ -2,6 +2,8 @@
 this file contains the functionality necessary for converting between units for chemspeed use
 """
 from typing import Any
+# ATTN: Should we have an error for negative temp and pressure input values?
+#  or even a warning for 0 pressure?
 
 
 def temp_k_to_c(temp_kelvin: float) -> float:
