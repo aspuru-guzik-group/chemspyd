@@ -1,10 +1,8 @@
 """
 This file contains the functionality for the checking of user inputs into the chemspeed controller.
 """
-from typing import List, Union, Any
-import os
-import time
-from utils.zones import Zones, zones_list
+from typing import List, Union
+from chemspyd.utils import Zones, zones_list
 
 
 def init_valid_zones() -> List[str]:
@@ -37,7 +35,7 @@ def init_valid_zones() -> List[str]:
     return valid_zones
 
 
-def validate_zones(valid_zones: Zones, zones: Zones) -> bool:
+def validate_zones(valid_zones: List[str], zones: Union[Zones, str, List[str]]) -> bool:
     """
     checks that all zones are valid
 
@@ -45,7 +43,7 @@ def validate_zones(valid_zones: Zones, zones: Zones) -> bool:
     :param zones: zones being checked
     :return: true if all zones are valid
     """
-    if isinstance(zones, int):
+    if isinstance(zones, str):
         if zones in valid_zones:
             return True
         else:
