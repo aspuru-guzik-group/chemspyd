@@ -1,105 +1,75 @@
-import os
 import time
+from threading import Thread
 
-from pynput import keyboard  # type: ignore[import]
+
+class CountdownThread(Thread):
+    def __init__(self, duration: int):
+        super().__init__()
+        self.wait_time: int = duration
+        self.duration: int = duration
+        self._running: bool = True
+
+    def terminate(self) -> int:
+        self._running = False
+        return self.wait_time - self.duration
+
+    def run(self) -> None:
+        """
+        Overwrites Thread.run() method to do the countdown. Called by Thread.start().
+        """
+        while self._running and self.duration >= 0:
+            print(f'Waiting for {self.duration:8.0f} seconds.', end='\r', flush=True)
+            self.duration -= 1
+            time.sleep(1)
 
 
 class Wait:
     """Class wrapper for function to wait for keyboard input or end of timer."""
-    def __init__(self):
-        self.terminate: bool = False
-
-    def _on_press(self, key) -> bool:  # type: ignore[return]
-        if key == keyboard.Key.space:
-            self.terminate = True
-            # Stop Listener() context manager by returning False
-            return False
-
     @staticmethod
-    def _wait_windows_only(duration):
+    def _get_input(thread_to_terminate: CountdownThread) -> int:
         """
-        Windows-only wait method using only the 'msvcrt' module.
+        Waits for any input from the user, then terminates the `thread_to_terminate` thread.
         Args:
-            duration: Duration to wait unless interrupted.
-
-        Raises:
-            OSError if method is called when not on a Windows machine.
+            thread_to_terminate: Instance of CountdownThread that will be terminated.
         """
-        if os.name == 'nt':
-            import msvcrt
-        else:
-            raise OSError('This method is not available on this operating system.')
+        dummy: str = input('Press [Enter] to stop wait\n')
+        waited: int = thread_to_terminate.terminate()
+        print('Wait cancelled.')
+        return waited
 
-        print('press "q" to cancel wait')
-        while duration >= 0:
-            print(f"", end=f'\rWaiting for {duration} seconds.')
-            time.sleep(1)
-            duration -= 1
-            if msvcrt.kbhit() and msvcrt.getwch() == 'q':  # type: ignore[attr-defined]
-                print("\nWait cancelled")
-                duration = -1
-
-    def _wait_context_manager(self, duration: int) -> None:
+    def _wait_builtins(self, duration: int) -> None:
         """
-        Waits for a set time, unless interrupted. Uses the pynput context manager.
+        Wait using two `threading.Thread` threads.
 
         Args:
-            duration: Duration to wait unless interrupted.
-
-        Returns:
-            None
-
-        Raises:
-            NotImplementedError
+            duration: Time to wait in seconds.
         """
-        # with keyboard.Listener(on_press=self._on_press) as listener:
-        #     listener.join(duration)
-        raise NotImplementedError("Waiting for a fix for the Listener.join() timeout bug in pynput.")
+        countdown: CountdownThread = CountdownThread(duration)
+        input_thread: Thread = Thread(target=self._get_input, args=(countdown,))
 
-    def _wait_no_block(self, duration: int) -> int:
-        """
-        Waits for a set time, unless interrupted.
-        Instead of the pynput context manager, this method sets the 'terminate' variable.
-
-        Args:
-            duration: Duration to wait unless interrupted.
-
-        Returns:
-            How long the wait was. Either 'duration' (if completed), or the time after which it was interrupted.
-        """
-        listener = keyboard.Listener(on_press=self._on_press)
-        listener.start()
-        wait_time: int = duration
-        while duration >= 0:
-            if self.terminate:
-                listener.stop()
-                print('Wait cancelled.')
-                return wait_time - duration
-            time.sleep(1)
-            duration -= 1
-        print(f"Finished waiting for {wait_time} seconds.")
-        return wait_time
-
-    @staticmethod
-    def _wait_events(duration):
-        # The event listener will be running in this block
-        print(f'Waiting for {duration} seconds.')
-        with keyboard.Events() as events:
-            event = events.get(duration)
-            if event is None:
-                print(f'You did not press a key within {duration} seconds.')
-            else:
-                print('Wait cancelled.')
+        inpt = input_thread.start()
+        countdown.start()
+        # TODO: How to retrieve 'waited' value from these threads?
 
     def wait(self, duration: int) -> int:
         """
-        Waits for 'duration' seconds, unless interrupted.
+        Waits for `duration` seconds, unless interrupted.
 
         Args:
             duration: Time to wait in seconds.
 
         Returns:
-            None
+            Time waited in seconds, rounded to the nearest whole second.
         """
-        waited: int = self._wait_no_block(duration)
+        print(f'Waiting for {duration} seconds.')
+        start: float = time.time()
+        works = self._wait_builtins(duration)
+        stop: float = time.time()
+        # TODO: Replace with getting 'waited' from self._wait_builtins if possible.
+        waited: int = int(round((stop - start), 0))
+        print(f'Waited for {waited} seconds.')
         return waited
+
+
+if __name__ == '__main__':
+    waited = Wait().wait(30)
