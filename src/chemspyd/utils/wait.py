@@ -1,3 +1,4 @@
+import os
 import time
 
 from pynput import keyboard  # type: ignore[import]
@@ -13,6 +14,30 @@ class Wait:
             self.terminate = True
             # Stop Listener() context manager by returning False
             return False
+
+    @staticmethod
+    def _wait_windows_only(duration):
+        """
+        Windows-only wait method using only the 'msvcrt' module.
+        Args:
+            duration: Duration to wait unless interrupted.
+
+        Raises:
+            OSError if method is called when not on a Windows machine.
+        """
+        if os.name == 'nt':
+            import msvcrt
+        else:
+            raise OSError('This method is not available on this operating system.')
+
+        print('press "q" to cancel wait')
+        while duration >= 0:
+            print(f"", end=f'\rWaiting for {duration} seconds.')
+            time.sleep(1)
+            duration -= 1
+            if msvcrt.kbhit() and msvcrt.getwch() == 'q':  # type: ignore[attr-defined]
+                print("\nWait cancelled")
+                duration = -1
 
     def _wait_context_manager(self, duration: int) -> None:
         """
@@ -54,6 +79,17 @@ class Wait:
             duration -= 1
         print(f"Finished waiting for {wait_time} seconds.")
         return wait_time
+
+    @staticmethod
+    def _wait_events(duration):
+        # The event listener will be running in this block
+        print(f'Waiting for {duration} seconds.')
+        with keyboard.Events() as events:
+            event = events.get(duration)
+            if event is None:
+                print(f'You did not press a key within {duration} seconds.')
+            else:
+                print('Wait cancelled.')
 
     def wait(self, duration: int) -> int:
         """
