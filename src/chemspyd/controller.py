@@ -3,11 +3,9 @@ import os
 import time
 
 from chemspyd import validate
+from chemspyd.utils.wait import Wait
 from chemspyd.utils.zones import Zones, to_zone_string
 import chemspyd.utils.unit_conversions as units
-
-if os.name == 'nt':
-    import msvcrt
 
 
 class ChemspeedController(object):
@@ -571,30 +569,17 @@ class ChemspeedController(object):
         else:
             return status
 
-    def wait(self, duration: int) -> None:
+    @staticmethod
+    def wait(duration: int) -> int:
         """
-        waits for a set duration
-        can be cancelled by hitting q
+        Waits for a set duration. Can be cancelled by hitting [Space].
+
         Args:
             duration: duration of wait
 
         Returns: None
         """
-        dur = duration
-        if self.simulation:
-            print("Waiting for 0 seconds")
-        else:
-            print('press "q" to cancel wait')
-            while duration >= 0:
-                print("", end=f'\rWaiting for {duration} seconds.')
-                time.sleep(1)
-                duration -= 1
-                if os.name == 'nt':
-                    # FIXME: Temporarily putting a type ignore here. Should fix to also allow
-                    #  catching keyboard input from other OSs.
-                    if msvcrt.kbhit() and msvcrt.getwch() == 'q':  # type: ignore[attr-defined]
-                        print("\nWait cancelled")
-                        # FIXME: Shouldn't this be a break?
-                        duration = -1
-
-        print(f'Finished waiting for {dur} seconds')
+        print('Press [Space] to cancel wait.')
+        waited: int = Wait().wait(duration)
+        print(f'Waited for {waited} seconds')
+        return waited
