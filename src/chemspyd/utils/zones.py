@@ -25,7 +25,7 @@ from typing import Union, List
 # Zones = Union[str, List]
 
 
-class Zones(object):
+class Zones:
     """
     holds and manages the zones for chemspeed
     every item in Zones is a valid zone in the chemspeed manager
@@ -89,7 +89,7 @@ def to_zone_string(zones: Union[Zones, str, List[str]]) -> str:
     return str(zones)
 
 
-def zones_list(zone: str, *wells):
+def zones_list(zone: str, *wells: List[Union[int, str]]):
     """A helper function to easily create a list of zones
 
     Usage:

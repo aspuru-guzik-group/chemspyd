@@ -1,8 +1,10 @@
+from pathlib import Path
 from typing import Dict, List, Union
 import os
 import time
 
 from chemspyd import validate
+from chemspyd.utils.errors import ZoneError
 from chemspyd.utils.zones import Zones, to_zone_string
 import chemspyd.utils.unit_conversions as units
 
@@ -10,24 +12,24 @@ if os.name == 'nt':
     import msvcrt
 
 
-class ChemspeedController(object):
+class ChemspeedController:
     """Controller class for the Chemspeed platform.
 
     Args:
-        cmd_folder (str): the folder path containing CSV files for
-            communication with the platform.
-        stdout (bool): disable commandline output messages.
-        logfile (str): log file path.
-        simulation (bool): True to run the controller in simulation (only in python, not autosuite).
+        cmd_folder: the folder path containing CSV files for communication with the platform.
+        stdout: disable commandline output messages.
+        logfile: log file path.
+        simulation: True to run the controller in simulation (only in python, not autosuite).
     """
 
     def __init__(self,
-                 cmd_folder: str,
+                 cmd_folder: str,  # TODO: Change to Path?
                  stdout: bool = True,
-                 logfile: str = '',
+                 logfile: str = '',  # TODO: Change to Path?
                  simulation: bool = False,
                  ) -> None:
         """Initialize paths to files for communication with the platform."""
+        # ATTN: Need to figure out if Path will work with //IPC/... path.
         self.cmd_file = os.path.join(cmd_folder, 'command.csv')
         self.rsp_file = os.path.join(cmd_folder, 'response.csv')
         self.sts_file = os.path.join(cmd_folder, 'status.csv')
@@ -71,8 +73,7 @@ class ChemspeedController(object):
             *args (list): List of arguments for the command.
         """
         args_line = ','.join([str(arg) for arg in args])
-        # TODO: Repalce with f strings for readability?
-        exec_message = 'Execute: {}({})'.format(command, args_line.replace(',', ', '))
+        exec_message = f"Execute: {command}({args_line.replace(',', ', ')})"
 
         # skip everything if simulation
         if self.simulation:
@@ -82,21 +83,18 @@ class ChemspeedController(object):
         # send to file
         while self.chemspeed_blocked():
             time.sleep(0.1)
-        # TODO: Repalce with f strings for readability?
         with open(self.cmd_file, 'w') as f:
             # set new command to true, and the command name
-            f.write('1,{}\n'.format(command))
-            f.write('{},end'.format(args_line))
+            f.write(f"1,{command}\n")
+            f.write(f'{args_line},end')
 
-        # stdout & loggin
-        # TODO: Repalce with f strings for readability?
-        exec_message = 'Execute: {}({})'.format(command, args_line.replace(',', ', '))
+        # stdout & logging
+        exec_message = f"Execute: {command}({args_line.replace(',', ', ')})"
         if self.stdout:
             print(exec_message, end='', flush=True)
         if self.logfile != '':
-            # TODO: Replace with built-in logging?
             with open(self.logfile, 'a') as f:
-                f.write(f'{exec_message}\n')
+                f.write(f"{exec_message}\n")
 
         # wait until no idle to print command executed
         while self._chemspeed_idle():
@@ -159,10 +157,11 @@ class ChemspeedController(object):
 
         """
         # checking that all parameters are valid:
+        # TODO: Validate all zones in args from Zones instances?
         if not validate.validate_zones(self.valid_zones, source) or not validate.validate_zones(self.valid_zones,
                                                                                                 destination):
-            # TODO: Raise custom error.
-            print('Invalid zones')
+            raise ZoneError('Invalid zones')
+
 
         source = to_zone_string(source)
         destination = to_zone_string(destination)
@@ -446,10 +445,11 @@ class ChemspeedController(object):
             state (str): stir state (on, off)
             rpm (float): stir rotation speed (rpm)
         """
-        # TODO: Add custom errors
-        assert stir_zone == 'ISYNTH' or stir_zone == 'RACK_HS', f'{stir_zone} zone not stirrable.'
-        assert (stir_zone == 'RACK_HS' and rpm <= 400) or (
-                stir_zone == 'ISYNTH' and rpm <= 1600), f'RPM out of range for {stir_zone}.'
+        if not stir_zone == 'ISYNTH' or stir_zone == 'RACK_HS':
+            raise ZoneError(f"{stir_zone} zone cannot be stirred.")
+        if not (stir_zone == 'RACK_HS' and rpm <= 400) or (stir_zone == 'ISYNTH' and rpm <= 1600):
+            ZoneError(f"RPM out of range for {stir_zone}.")
+
         self.unmount_all()
         self.execute('set_stir', stir_zone, state, rpm)
 
