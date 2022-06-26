@@ -1,6 +1,6 @@
-'''
+"""
 the utilities for zones
-'''
+"""
 from typing import Union, List
 
 # from typing import List, Union, Any
@@ -33,25 +33,26 @@ class Zones(object):
     Attributes:
         valid_zones (dict): holds the valid zone names as keys to the number of wells in that zones
     """
+
     def __init__(self):
         """
         initializes Zones
         """
         self.valid_zones = {
-            'ISYNTH': 48,
-            'INJECT_I': 2,
-            'INJECT_L': 2,
-            'RACK_HS': 0,
-            'RACKL': 80,
-            'RACKR': 30,
-            'RACK4ML': 24,
-            'RACK4ML2': 24,
-            'SOLID': 16,
-            'SPE_C': 80,
-            'SPE_D': 80,
-            'SPE_W': 80,
-            'VALVEB': 4,
-            'WASTE': 8
+            "ISYNTH": 48,
+            "INJECT_I": 2,
+            "INJECT_L": 2,
+            "RACK_HS": 0,
+            "RACKL": 80,
+            "RACKR": 30,
+            "RACK4ML": 24,
+            "RACK4ML2": 24,
+            "SOLID": 16,
+            "SPE_C": 80,
+            "SPE_D": 80,
+            "SPE_W": 80,
+            "VALVEB": 4,
+            "WASTE": 8,
         }
 
     # def range_to_list(self, name: str, well_i: int = 1, well_f: int = 2):
@@ -85,7 +86,7 @@ def to_zone_string(zones: Union[Zones, str, List[str]]) -> str:
         str: Semicolon separated list of zones.
     """
     if isinstance(zones, list):
-        return ';'.join(zones)
+        return ";".join(zones)
     return str(zones)
 
 
@@ -102,4 +103,4 @@ def zones_list(zone: str, *wells):
     Returns:
         list: list of manager readable zones
     """
-    return [zone + ':' + str(w) for w in wells]
+    return [zone + ":" + str(w) for w in wells]

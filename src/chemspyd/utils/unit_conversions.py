@@ -2,6 +2,7 @@
 this file contains the functionality necessary for converting between units for chemspeed use
 """
 from typing import Any
+
 # ATTN: Should we have an error for negative temp and pressure input values?
 #  or even a warning for 0 pressure?
 
@@ -27,7 +28,7 @@ def pressure_pa_to_mbar(pressure_pa: float) -> float:
     Returns:
         float: Pressure in Pa rounded to 5 decimal places.
     """
-    return round(pressure_pa / 100., 5)
+    return round(pressure_pa / 100.0, 5)
 
 
 def no_change(value: Any) -> Any:

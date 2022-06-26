@@ -1,5 +1,6 @@
 flake8
 mypy
+nox
 pytest
 pytest-cov
 tox

@@ -12,22 +12,22 @@ def init_valid_zones() -> List[str]:
     Returns:
         List of valid zones
     """
-    valid_zones = ['RACK_HS']
+    valid_zones = ["RACK_HS"]
     z = {
-        'ISYNTH': 48,
-        'INJECT_I': 2,
-        'INJECT_L': 2,
-        'RACK_HS': 0,
-        'RACKL': 80,
-        'RACKR': 30,
-        'RACK4ML': 24,
-        'RACK4ML2': 24,
-        'SOLID': 16,
-        'SPE_C': 80,
-        'SPE_D': 80,
-        'SPE_W': 80,
-        'VALVEB': 4,
-        'WASTE': 8
+        "ISYNTH": 48,
+        "INJECT_I": 2,
+        "INJECT_L": 2,
+        "RACK_HS": 0,
+        "RACKL": 80,
+        "RACKR": 30,
+        "RACK4ML": 24,
+        "RACK4ML2": 24,
+        "SOLID": 16,
+        "SPE_C": 80,
+        "SPE_D": 80,
+        "SPE_W": 80,
+        "VALVEB": 4,
+        "WASTE": 8,
     }
     for key in z:
         valid_zones.extend(zones_list(key, z[key]))
