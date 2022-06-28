@@ -1,10 +1,9 @@
-from pathlib import Path
 from typing import Dict, List, Union
 import os
 import time
 
 from chemspyd import validate
-from chemspyd.utils.errors import ZoneError
+from chemspyd.exceptions.zone_exceptions import ZoneError
 from chemspyd.utils.zones import Zones, to_zone_string
 import chemspyd.utils.unit_conversions as units
 
