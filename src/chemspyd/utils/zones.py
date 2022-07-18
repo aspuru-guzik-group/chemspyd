@@ -103,3 +103,16 @@ def zones_list(zone: str, *wells: List[Union[int, str]]):
         list: list of manager readable zones
     """
     return [zone + ':' + str(w) for w in wells]
+
+
+def get_return_dst(dst: str) -> str:
+    """
+    Converts 'VALVEB' source to correct waste for system liquid dispensing.
+    """
+    valve2waste = {
+        'VALVEB:1': 'WASTE1:1',
+        'VALVEB:2': 'WASTE1:2',
+        'VALVEB:3': 'WASTE1:3',
+        'VALVEB:4': 'WASTE2:4'
+    }
+    return valve2waste[dst]

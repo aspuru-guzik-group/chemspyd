@@ -66,7 +66,6 @@ class ChemspeedController:
 
     def execute(self, command: str, *args) -> None:
         """Method that alters the command CSV for Chemspeed, includes command name and arguments.
-
         Args:
             command (str): The command name to be received in Chemspeed.
             *args (list): List of arguments for the command.
@@ -562,8 +561,9 @@ class ChemspeedController:
             units.pressure_pa_to_mbar,
             units.no_change,
             units.temp_k_to_c,
+            units.no_change,
         ]
-        types = ['temperature', 'reflux', 'vacuum', 'stir', 'box_temperature']
+        types = ['temperature', 'reflux', 'vacuum', 'stir', 'box_temperature', 'box_humidity']
         status = {t: c(v) for t, v, c in zip(types, values, convert)}
         if key in types:
             return status.get(key, None)

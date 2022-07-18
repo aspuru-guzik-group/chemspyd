@@ -36,6 +36,3 @@ functions to check:
 
 functions in manager but not controller
     - screwcapping()
-
-functions to implement anew
-    - play_sound
