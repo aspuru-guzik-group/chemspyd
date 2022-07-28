@@ -68,7 +68,7 @@ class ChemspeedController:
         """Method that alters the command CSV for Chemspeed, includes command name and arguments.
         Args:
             command (str): The command name to be received in Chemspeed.
-            *args (list): List of arguments for the command.
+            *args: List of arguments for the command.
         """
         args_line = ','.join([str(arg) for arg in args])
         exec_message = f"Execute: {command}({args_line.replace(',', ', ')})"
@@ -393,8 +393,9 @@ class ChemspeedController:
             fd_amount
         )
 
-    def set_drawer(self, zone: str, state: str, environment: str = 'none'):
-        """Setting ISYNTH drawer position. For accessing the vials in ISYNTH.
+    def set_drawer(self, zone: Union[str, List[str]], state: str, environment: str = 'none'):
+        """
+        Setting ISYNTH drawer position. For accessing the vials in ISYNTH.
         Can set the vials under vacuum, inert or none state.
 
         Args:
@@ -415,6 +416,22 @@ class ChemspeedController:
         """
         self.execute('set_isynth_reflux', state, temperature)
 
+    def set_reflux(self, reflux_zone: str, state: str, temperature: float = 0):
+        """
+        Sets the reflux chilling temperature on a defined zone.
+
+        ATTN: Currently implemented in analogy to the set_stir method.
+                - the reflux_zone argument is not c
+
+        Args:
+            reflux_zone: Zone to be refluxed (ISYNTH)
+            state: Cryostat state (on, off)
+            temperature: Temperature (in °C) to set the cryostat to.
+        """
+        raise NotImplementedError
+        # TODO: Implement the proper set_reflux function on the Manager.
+        self.execute("set_reflux", reflux_zone, state, temperature)
+
     # TODO: Remove ISYNTH-specific methods? Or give deprecation method.
     def set_isynth_temperature(self, state: str, temperature: float = 15, ramp: float = 0):
         """Setting ISYNTH heating temperature.
@@ -425,6 +442,21 @@ class ChemspeedController:
             ramp (float): ramping speed for the temperature (C/min)
         """
         self.execute('set_isynth_temperature', state, temperature, ramp)
+
+    def set_temperature(self, temp_zone: str, state: str, temperature: float = 20, ramp: float = 0):
+        """
+        Sets the heating temperature for a given element.
+
+        Args:
+            temp_zone: Zone to be heated / cooled (ISYNTH, RACK_HS)
+            state: Cryostat state (on, off)
+            temperature: Temperature (in °C) to set the cryostat to.
+            ramp: Ramping speed for the temperature (in °C / min)
+
+        """
+        raise NotImplementedError
+        # TODO: Implement the proper set_temperature function on the Manager.
+        self.execute("set_temperature", temp_zone, state, temperature, ramp)
 
     # TODO: Remove ISYNTH-specific methods? Or give deprecation method.
     def set_isynth_stir(self, state: str, rpm: float = 200):
@@ -438,6 +470,8 @@ class ChemspeedController:
 
     def set_stir(self, stir_zone: str, state: str, rpm: float = 0):
         """Set stirring.
+
+        ATTN: Currently, the stir_zone is not compatible with "classical" zone / well definitions.
 
         Args:
             stir_zone (str): rack to stir (ISYNTH, RACK_HS)

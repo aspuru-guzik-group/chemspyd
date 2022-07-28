@@ -1,7 +1,8 @@
 """
 this file contains the functionality necessary for converting between units for chemspeed use
 """
-from typing import Any
+from typing import Any, Union
+from scipy.constants import *
 # ATTN: Should we have an error for negative temp and pressure input values?
 #  or even a warning for 0 pressure?
 
@@ -15,7 +16,20 @@ def temp_k_to_c(temp_kelvin: float) -> float:
     Returns:
         float: Temperature in °C rounded to 5 decimal places.
     """
-    return round(temp_kelvin - 273.15, 5)
+    return convert_temperature(temp_kelvin, "K", "C")
+
+
+def hours_to_seconds(time_hours: float) -> Union[int, float]:
+    """
+    Converts the time in hours to seconds and rounds the result to 0 decimal places.
+
+    Args:
+        time_hours: Time in hours.
+
+    Returns:
+        float: time in seconds
+    """
+    return round(time_hours * hour)
 
 
 def pressure_pa_to_mbar(pressure_pa: float) -> float:

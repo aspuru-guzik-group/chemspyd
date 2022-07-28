@@ -1,0 +1,3 @@
+scipy~=1.8.1
+chemspyd~=0.0.0
+setuptools~=63.2.0
