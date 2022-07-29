@@ -1,6 +1,7 @@
 from typing import Dict, List, Union
 import os
 import time
+from deprecation import deprecated
 
 from chemspyd import validate
 from chemspyd.exceptions.zone_exceptions import ZoneError
@@ -406,7 +407,8 @@ class ChemspeedController:
         zone = to_zone_string(zone)
         self.execute('set_drawer', zone, state, environment)
 
-    # TODO: Remove ISYNTH-specific methods? Or give deprecation method.
+    @deprecated(deprecated_in="1.0", removed_in="2.0",
+                details="ISYNTH-specific methods will be deprecated. Use set_reflux instead.")
     def set_isynth_reflux(self, state: str, temperature: float = 15):
         """Setting ISYNTH reflux chilling temperature.
 
@@ -432,7 +434,8 @@ class ChemspeedController:
         # TODO: Implement the proper set_reflux function on the Manager.
         self.execute("set_reflux", reflux_zone, state, temperature)
 
-    # TODO: Remove ISYNTH-specific methods? Or give deprecation method.
+    @deprecated(deprecated_in="1.0", removed_in="2.0",
+                details="ISYNTH-specific methods will be deprecated. Use set_temperature instead.")
     def set_isynth_temperature(self, state: str, temperature: float = 15, ramp: float = 0):
         """Setting ISYNTH heating temperature.
 
@@ -458,7 +461,8 @@ class ChemspeedController:
         # TODO: Implement the proper set_temperature function on the Manager.
         self.execute("set_temperature", temp_zone, state, temperature, ramp)
 
-    # TODO: Remove ISYNTH-specific methods? Or give deprecation method.
+    @deprecated(deprecated_in="1.0", removed_in="2.0",
+                details="ISYNTH-specific methods will be deprecated. Use set_stir instead.")
     def set_isynth_stir(self, state: str, rpm: float = 200):
         """Setting ISYNTH vortex speed.
 
@@ -486,7 +490,8 @@ class ChemspeedController:
         self.unmount_all()
         self.execute('set_stir', stir_zone, state, rpm)
 
-    # TODO: Remove ISYNTH-specific methods? Or give deprecation method.
+    @deprecated(deprecated_in="1.0", removed_in="2.0",
+                details="ISYNTH-specific methods will be deprecated. Use set_vacuum instead.")
     def set_isynth_vacuum(self, state: str, vacuum: float = 1000):
         """Setting ISYNTH vacuum pressure.
 
@@ -496,6 +501,21 @@ class ChemspeedController:
         """
         self.execute('set_isynth_vacuum', state, vacuum)
 
+    def set_vacuum(self, vac_zone: str, state: str, vacuum: float = 1000):
+        """
+        Sets the heating temperature for a given element.
+
+        Args:
+            vac_zone: Zone to be set under vacuum (ISYNTH)
+            state: Vacuum pump state state (on, off)
+            vacuum: Pressure to set the vacuum pump to.
+        """
+        raise NotImplementedError
+        # TODO: Implement the proper set_vacuum function on the Manager.
+        self.execute("set_vacuum", vac_zone, state, vacuum)
+
+    @deprecated(deprecated_in="1.0", removed_in="2.0",
+                details="ISYNTH-specific methods will be deprecated. Use operation-specific methods instead.")
     def set_isynth(self, **kwargs: Union[None, str, float]):
         """Setting ISYNTH values. The following values can be [None, str, float]. If set at None, no change to current state.
         If "off" then turns off. If set to a value, then the system will turn on and set to that value.
