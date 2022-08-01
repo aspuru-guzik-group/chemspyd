@@ -1,0 +1,128 @@
+{
+  "ISYNTH": {
+    "no_wells": 48,
+    "max_quantity": 8,
+    "default_quantity": 0,
+    "has_heat": true,
+    "has_stir": true,
+    "has_reflux": true,
+    "has_vacuum": true,
+    "has_inert": true,
+    "states": {
+      "default": "ISYNTH",
+      "close": "ISYNTH",
+      "close_inert": "ISYNTH",
+      "open": "ISYNTH",
+      "open_inert": "ISYNTH"
+    }
+  },
+  "RACKL": {
+    "no_wells": 80,
+    "max_quantity": 8,
+    "default_quantity": 0,
+    "has_heat": false,
+    "has_stir": false,
+    "has_reflux": false,
+    "has_vacuum": false,
+    "has_inert": false,
+    "states": {
+      "default": "RACKL"
+    }
+  },
+  "RACKR": {
+    "no_wells": 30,
+    "max_quantity": 20,
+    "default_quantity": 0,
+    "has_heat": false,
+    "has_stir": false,
+    "has_reflux": false,
+    "has_vacuum": false,
+    "has_inert": false,
+    "states": {
+      "default": "RACKR"
+    }
+  },
+  "RACK4ML": {
+    "no_wells": 24,
+    "max_quantity": 4,
+    "default_quantity": 0,
+    "has_heat": false,
+    "has_stir": false,
+    "has_reflux": false,
+    "has_vacuum": false,
+    "has_inert": false,
+    "states": {
+      "default": "RACK4ML"
+    }
+  },
+  "RACK4ML2": {
+    "no_wells": 24,
+    "max_quantity": 4,
+    "default_quantity": 0,
+    "has_heat": false,
+    "has_stir": false,
+    "has_reflux": false,
+    "has_vacuum": false,
+    "has_inert": false,
+    "states": {
+      "default": "RACK4ML2"
+    }
+  },
+  "SOLID": {
+    "no_wells": 16,
+    "max_quantity": 10000,
+    "default_quantity": 10000,
+    "has_heat": false,
+    "has_stir": false,
+    "has_reflux": false,
+    "has_vacuum": false,
+    "has_inert": false,
+    "states": {
+      "default": "SOLID"
+    }
+  },
+  "VALVEB": {
+    "no_wells": 4,
+    "max_quantity": 4000,
+    "default_quantity": 4000,
+    "has_heat": false,
+    "has_stir": false,
+    "has_reflux": false,
+    "has_vacuum": false,
+    "has_inert": false,
+    "states": {
+      "default": "VALVEB"
+    }
+  },
+  "SPE": {
+    "no_wells": 80,
+    "max_quantity": 8,
+    "default_quantity": 0,
+    "has_heat": false,
+    "has_stir": false,
+    "has_reflux": false,
+    "has_vacuum": false,
+    "has_inert": false,
+    "states": {
+      "default": "SPE_D",
+      "draw": "SPE_D",
+      "waste": "SPE_W",
+      "collect": "SPE_C"
+    }
+  },
+  "INJECT": {
+    "no_wells": 2,
+    "max_quantity": null,
+    "default_quantity": null,
+    "has_heat": false,
+    "has_stir": false,
+    "has_reflux": false,
+    "has_vacuum": false,
+    "has_inert": false,
+    "states": {
+      "default": "SPE_I",
+      "load": "SPE_L",
+      "inject": "SPE_I"
+    }
+  }
+}

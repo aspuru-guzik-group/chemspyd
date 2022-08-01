@@ -29,6 +29,8 @@ def prime_pumps(
     src = f'VALVEB:{pump}'
     dst = get_return_dst(src)
 
+    # TODO: currently, the number of pumps and source-dst mapping are hard-coded
+
     mgr.transfer_liquid(
         source=src,
         destination=dst,
@@ -155,11 +157,9 @@ def filter_liquid(
         filtration_zone: Union[str, List[str]],
         filtration_volume: float,
         collect_filtrate: bool = True,
-        wash: bool = False,
         wash_liquid: Union[str, List[str]] = "",
         wash_volume: float = 0,
         collect_wash: bool = False,
-        elution: bool = False,
         eluent: Union[str, List[str]] = "",
         eluent_volume: float = 0
 ):
@@ -172,11 +172,9 @@ def filter_liquid(
         filtration_zone: Zone on the filtration rack to be used   ATTN: What exactly is this?
         filtration_volume: Volume (in mL) of liquid to be filtered.
         collect_filtrate: Whether to collect or dispose the filtrate
-        wash: Whether to wash the solid residue.
         wash_liquid: Source zone of the wash liquid.
         wash_volume: Volume (in mL) of wash liquid.
         collect_wash: Whether to collect or dispose the wash liquid.
-        elution: Whether to do an additional elution step.
         eluent: Source zone of the eluent.
         eluent_volume: Volume of eluent to be used.
 
@@ -190,7 +188,8 @@ def filter_liquid(
 
     collect_zone, waste_zone = get_filtration_zones(filtration_zone)  # TODO: implement this method?
 
-    filtrate_zone: str = collect_zone if collect_filtrate else waste_zone
+    filtrate_zone: str = collect_zone if collect_filtrate else waste_zone # TODO: adapt to zone architecture
+
 
     mgr.transfer_liquid(
         source=source_well,
@@ -198,7 +197,7 @@ def filter_liquid(
         volume=filtration_volume
     )
 
-    if wash:
+    if wash_volume > 0:
         wash_zone: str = collect_zone if collect_wash else waste_zone
         mgr.transfer_liquid(
             source=wash_liquid,
@@ -206,7 +205,7 @@ def filter_liquid(
             volume=wash_volume
         )
 
-    if elution:
+    if eluent_volume > 0:
         mgr.transfer_liquid(
             source=eluent,
             destination=collect_zone,
