@@ -1,11 +1,13 @@
 from typing import Dict, List, Union
 import os
+from pathlib import Path
 import time
 from deprecation import deprecated
 
 from chemspyd import validate
 from chemspyd.exceptions.zone_exceptions import ZoneError
 from chemspyd.utils.zones import Zones, to_zone_string
+from chemspyd.utils.logging_utils import get_logger
 import chemspyd.utils.unit_conversions as units
 
 if os.name == 'nt':
@@ -23,42 +25,73 @@ class ChemspeedController:
     """
 
     def __init__(self,
-                 cmd_folder: str,  # TODO: Change to Path?
+                 cmd_folder: Union[str, Path],
                  stdout: bool = True,
-                 logfile: str = '',  # TODO: Change to Path?
+                 logfile: Union[str, Path, None] = None,
                  simulation: bool = False,
                  ) -> None:
-        """Initialize paths to files for communication with the platform."""
-        # ATTN: Need to figure out if Path will work with //IPC/... path.
-        self.cmd_file = os.path.join(cmd_folder, 'command.csv')
-        self.rsp_file = os.path.join(cmd_folder, 'response.csv')
-        self.sts_file = os.path.join(cmd_folder, 'status.csv')
-        self.ret_file = os.path.join(cmd_folder, 'return.csv')
-        self.stdout = stdout
-        self.logfile = logfile
+        """
+        Initializes the ChemspeedController by:
+            - setting up the paths to the communication files
+            - establishing logging
+
+        Args:
+            cmd_folder: Path to the folder containing the csv files for communicating with the instrument.
+            stdout: True if console output messages should be displayed.
+            logfile: Path to the log file. If None, no log file is written.
+            simulation: True in order to run the Python controller (not Autosuite!) in simulation mode.
+                        Will only print execution statements then (without sending any commands to the instrument).
+
+        """
+        self.cmd_file = Path(cmd_folder) / "command.csv"
+        self.rsp_file = Path(cmd_folder) / "response.csv"
+        self.sts_file = Path(cmd_folder) / "status.csv"
+        self.ret_file = Path(cmd_folder) / "return.csv"
+
+        self.logger = get_logger(stdout, logfile)
+
         self.simulation = simulation
-        self.valid_zones = validate.init_valid_zones()
+        self.valid_zones = validate.init_valid_zones()  # TODO: Discuss how to include zone / element handling here.
 
     #############################
     # Chemspeed Remote Statuses #
     #############################
 
-    def _chemspeed_idle(self):
+    def _chemspeed_idle(self) -> bool:
+        """
+        Checks for the instrument to be idle.
+
+        Returns:
+            bool: True if the instrument is idle, else False.
+        """
+        # TODO: Write utility methods for reading / writing files etc?
+
         with open(self.rsp_file, 'r') as f:
             line = f.readline()
         message = line.split(',')
         return message[0] == '1'
 
-    def _chemspeed_newcmd(self):
+    def _chemspeed_newcmd(self) -> bool:
+        """
+        Checks if the instrument has received a new command.
+
+        Returns:
+            bool: True if it has received a new command, else False.
+        """
         with open(self.cmd_file, 'r') as f:
             line = f.readline()
         message = line.split(',')
         return message[0] == '1'
 
-    def chemspeed_blocked(self):
-        # blocked in cases of:
-        # >> not idle
-        # >> chemspeed received new command
+    def chemspeed_blocked(self) -> bool:
+        """
+        Checks if the instrument is blocked, i.e.
+            - not idle
+            - has received a new command
+
+        Returns:
+            bool: True if the instrument is blocked, else False.
+        """
         return not self._chemspeed_idle() or self._chemspeed_newcmd()
 
     ###############################
@@ -66,7 +99,10 @@ class ChemspeedController:
     ###############################
 
     def execute(self, command: str, *args) -> None:
-        """Method that alters the command CSV for Chemspeed, includes command name and arguments.
+        """
+        Main method to execute a given operation.
+        Writes the command into the command.csv file, including the command name and all required arguments.
+
         Args:
             command (str): The command name to be received in Chemspeed.
             *args: List of arguments for the command.
@@ -76,7 +112,7 @@ class ChemspeedController:
 
         # skip everything if simulation
         if self.simulation:
-            print(exec_message)
+            self.logger.debug(exec_message)
             return
 
         # send to file
@@ -88,18 +124,12 @@ class ChemspeedController:
             f.write(f'{args_line},end')
 
         # stdout & logging
-        exec_message = f"Execute: {command}({args_line.replace(',', ', ')})"
-        if self.stdout:
-            print(exec_message, end='', flush=True)
-        if self.logfile != '':
-            with open(self.logfile, 'a') as f:
-                f.write(f"{exec_message}\n")
+        self.logger.info(exec_message, extra={"continue_line": True})
 
-        # wait until no idle to print command executed
+        # wait until no idle to confirm that the command was executed
         while self._chemspeed_idle():
             time.sleep(0.1)
-        if self.stdout:
-            print(' -> started')
+        self.logger.debug("-> started", extra={"format": False})
 
         # self block, optional, or change to error detection
         while self.chemspeed_blocked():
@@ -160,7 +190,6 @@ class ChemspeedController:
         if not validate.validate_zones(self.valid_zones, source) or not validate.validate_zones(self.valid_zones,
                                                                                                 destination):
             raise ZoneError('Invalid zones')
-
 
         source = to_zone_string(source)
         destination = to_zone_string(destination)
@@ -245,7 +274,8 @@ class ChemspeedController:
     #         int(multiple_aspirations)
     #     )
 
-    # TODO: Deprecation error/warning/workaround...
+    @deprecated(deprecated_in="1.0", removed_in="2.0",
+                details="Deprecated. Use transfer_liquid instead, or refer to the routines sub-package.")
     def inject_liquid(self,
                       source: Union[str, List[str]],
                       destination: Union[str, List[str]],
@@ -340,9 +370,12 @@ class ChemspeedController:
             fd_amp,
             fd_num
         )
+
         with open(self.ret_file, 'r') as f:
             weights_str = f.readline().split(',')[:-1]
         return [float(w) * 1e6 for w in weights_str]
+
+        # ATTN: Should anything that comes after the self.execute call (e.g. file reading) belong to self.execute?
 
     def transfer_solid_swile(
             self,
@@ -630,13 +663,13 @@ class ChemspeedController:
         waits for a set duration
         can be cancelled by hitting q
         Args:
-            duration: duration of wait
+            duration: duration of wait (in seconds)
 
         Returns: None
         """
-        dur = duration
+        self.logger.info(f"Waiting for {duration} seconds.")
         if self.simulation:
-            print("Waiting for 0 seconds")
+            return
         else:
             print('press "q" to cancel wait')
             while duration >= 0:
@@ -646,9 +679,9 @@ class ChemspeedController:
                 if os.name == 'nt':
                     # FIXME: Temporarily putting a type ignore here. Should fix to also allow
                     #  catching keyboard input from other OSs.
+                    # FIXME: Should this be a global variable function that is set / imported with the OS?
                     if msvcrt.kbhit() and msvcrt.getwch() == 'q':  # type: ignore[attr-defined]
-                        print("\nWait cancelled")
-                        # FIXME: Shouldn't this be a break?
-                        duration = -1
+                        self.logger.info("Wait cancelled.")
+                        break
 
-        print(f'Finished waiting for {dur} seconds')
+        self.logger.info(f"Waiting for {duration} seconds completed.")
