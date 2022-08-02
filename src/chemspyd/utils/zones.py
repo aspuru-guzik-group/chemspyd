@@ -89,7 +89,7 @@ def zones_list(zone: str, *wells: List[Union[int, str]]):
     """
     return [zone + ':' + str(w) for w in wells]
 
-# ATTN: Contains a hard-coded mapping – should be somehow
+# ATTN: Contains a hard-coded mapping – should be somehow derived from file
 def get_return_dst(dst: str) -> str:
     """
     Converts 'VALVEB' source to correct waste for system liquid dispensing.
@@ -191,6 +191,8 @@ class Well(object):
         self._track_quantities = False if track_quantities is False or element.default_quantity is None else True
         self._quantity = element.default_quantity if self._track_quantities else None
         self._state = "default"
+
+        # TODO: Include 'clean' property
 
     @property
     def state(self) -> str:

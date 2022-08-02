@@ -190,7 +190,6 @@ def filter_liquid(
 
     filtrate_zone: str = collect_zone if collect_filtrate else waste_zone # TODO: adapt to zone architecture
 
-
     mgr.transfer_liquid(
         source=source_well,
         destination=filtrate_zone,
