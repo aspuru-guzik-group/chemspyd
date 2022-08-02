@@ -32,9 +32,6 @@ def get_logger(stdout: bool = True, logfile: Union[str, Path, None] = None):
     """
     Creates a logging.Logger object that handles logging for all ChemSpeed operations.
 
-    ATTN:   Currently, all specifications (formatting, handlers etc) are hard-coded. Should this stay like that?
-            Or should all logger specifications be defined in a json file (using logging.dictConfig)?
-
     Args:
         stdout: True if console output should be generated.
         logfile: Path to the logfile where events should be logged. If None, no logfile is written.

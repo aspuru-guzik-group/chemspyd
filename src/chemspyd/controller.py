@@ -53,6 +53,8 @@ class ChemspeedController:
         self.simulation = simulation
         self.valid_zones = validate.init_valid_zones()  # TODO: Discuss how to include zone / element handling here.
 
+        # TODO: create defaults folder and do everything from there
+
     #############################
     # Chemspeed Remote Statuses #
     #############################
