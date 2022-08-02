@@ -113,11 +113,12 @@ class ChemspeedElement(object):
         "no_wells",
         "max_quantity",
         "default_quantity",
-        "has_heat",
-        "has_stir",
-        "has_reflux",
-        "has_vacuum",
-        "has_inert",
+        "thermostat",
+        "stir",
+        "reflux",
+        "vacuum_pump",
+        "drawer",
+        "environment",
         "states"
     }
 
@@ -147,30 +148,63 @@ class ChemspeedElement(object):
     def __str__(self) -> str:
         return self.name
 
-    def validate_parameter(self, parameter_type: str, parameter: Union[int, float, bool]) -> None:
+    def validate_parameter(self, parameter_name: str, parameter_value: Union[int, float, str, bool]) -> None:
         """
         Validates a specific setting / target status (e.g. temperature, stir rate, ...) that the element should be
         set to.
 
         Args:
-            parameter_type: Key of the parameter (must be in self._required_keys).
-            parameter: Value of the parameter.
+            parameter_name: Key of the parameter (must be in self._required_keys).
+            parameter_value: Value of the parameter.
 
         Raises:
             ChemspeedValueError: If the parameter value is not within the specified boundaries.
             ChemspeedConfigurationError: If the parameter cannot be set for the given element.
         """
+        validation_methods: dict = {
+            str: self._validate_discrete_parameter,
+            bool: self._validate_discrete_parameter,
+            int: self._validate_continuous_parameter,
+            float: self._validate_continuous_parameter
+        }
+
         try:
-            lower_limit, upper_limit = getattr(self, parameter_type)
+            validation_methods[type(parameter_value)](parameter_name, parameter_value)
 
-            if not lower_limit <= parameter <= upper_limit:
-                raise ChemspeedValueError(
-                    f"The set value of {parameter_type}:{parameter} exceeds the limit of {self.name}"
-                )
-
-        except (AttributeError, TypeError):
+        except (KeyError, AttributeError, TypeError):
             raise ChemspeedConfigurationError(
-                f"The parameter {parameter_type} cannot be set for {self.name}")
+                f"The parameter {parameter_name} cannot be set for {self.name}")
+
+    def _validate_continuous_parameter(self, parameter_name: str, parameter_value: Union[int, float]) -> None:
+        """
+        Validates if a continuous parameter is in the specified boundaries,
+        given as [lower, upper] in the configuration.
+
+        Args:
+            parameter_name: Key of the parameter
+            parameter_value: Value of the parameter.
+        """
+        boundaries: list = getattr(self, parameter_name)
+
+        if not boundaries[0] <= parameter_value <= boundaries[1]:
+            raise ChemspeedValueError(
+                f"The set value of {parameter_name} ({parameter_value}) exceeds the limit of {self.name}."
+            )
+
+    def _validate_discrete_parameter(self, parameter_name: str, parameter_value: Union[str, bool]) -> None:
+        """
+        Validates if a discrete parameter is in the specified set of options.
+
+        Args:
+            parameter_name: Key of the parameter
+            parameter_value: Value of the parameter.
+        """
+        options: list = getattr(self, parameter_name)
+
+        if parameter_value not in options:
+            raise ChemspeedValueError(
+                f"The set value of {parameter_name} ({parameter_value}) is not a feasible option for {self.name}."
+            )
 
 
 class Well(object):
@@ -193,6 +227,7 @@ class Well(object):
         self._state = "default"
 
         # TODO: Include 'clean' property
+        # TODO: include tracking of further states and properties in addition to quantity?
 
     @property
     def state(self) -> str:
@@ -283,6 +318,104 @@ class Well(object):
         """
         return self.add_material(-quantity)
 
+    def validate_parameter(self, parameter_name: str, parameter_value: Union[int, float, str, bool]) -> None:
+        """
+        Validates if a certain parameter can be set for the specific well.
+        Wraps the validate_parameter() method of the ChemspeedElement class.
+
+        Args:
+            parameter_name: Key of the parameter (must be in self._required_keys).
+            parameter_value: Value of the parameter.
+
+        Raises:
+            ChemspeedValueError: If the parameter value is not within the specified boundaries.
+            ChemspeedConfigurationError: If the parameter cannot be set for the given element.
+        """
+        self.element.validate_parameter(parameter_name, parameter_value)
+
+    def get_element_string(self) -> str:
+        """
+        Returns the name of the element that the well belongs to.
+
+        Returns:
+            str: Element name
+        """
+        return self.element.states[self._state]
+
+
+class WellGroup(object):
+    """
+    Group of wells (only for internal use within a function)
+    """
+    def __init__(self, wells: Union[str, Well, List[str], List[Well]], well_configuration: dict):
+        """
+
+        :param wells:
+        """
+        self._all_wells: List[Well] = self._get_well_list(wells, well_configuration)
+
+    @staticmethod
+    def _get_well_list(wells: Union[str, Well, List[str], List[Well]], well_configuration: dict) -> list:
+        """
+
+        """
+        if isinstance(wells, (str, Well)):
+            wells = [wells]
+
+        all_wells: list = []
+
+        for well in wells:
+            if isinstance(well, Well):
+                all_wells.append(well)
+            else:
+                all_wells.append(well_configuration[well])
+
+    def set_parameter(self, parameter_name: str, parameter_value: Union[int, float, str, bool]) -> None:
+        """
+
+        :return:
+        """
+        for well in self._all_wells:
+            well.validate_parameter(parameter_name, parameter_value)
+
+    def add_material(self, quantity: float) -> None:
+        """
+
+        :param quantity:
+        :return:
+        """
+        for well in self._all_wells:
+            well.add_material(quantity)
+
+    def remove_material(self, quantity: float) -> None:
+        """
+
+        :param quantity:
+        :return:
+        """
+        for well in self._all_wells:
+            well.remove_material(quantity)
+
+    def get_zone_string(self) -> str:
+        """
+        Converts the list of wells into a single, semicolon-separated string of well names.
+
+        Returns:
+            str: Semicolon-separated list of wells that can be passed to the Manager.
+        """
+        return ";".join([str(well) for well in self._all_wells])
+
+    def get_element_string(self) -> str:
+        """
+        Converts the element names of all wells into a single, semicolon-separated string.
+        Removes duplicates by generating a set of element names.
+
+        Returns:
+             str: Semicolon-separated list of element names that can be passed to the manager.
+        """
+        element_strings: set = {well.get_element_string() for well in self._all_wells}
+        return ";".join(element_strings)
+
 
 def initialize_zones(config: dict, track_quantities: bool = False) -> Tuple[dict, dict]:
     """
@@ -332,6 +465,7 @@ def initialize_zones(config: dict, track_quantities: bool = False) -> Tuple[dict
     return elements, wells
 
 
+# ATTN: Deprecated, since it is now a method of  WellGroup
 def to_zone_string(wells: Union[Well, str, List[Well], List[str]]) -> str:
     """Return semicolon separated string of zones.
 
