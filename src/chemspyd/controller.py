@@ -24,15 +24,16 @@ class ChemspeedController:
         simulation: True to run the controller in simulation (only in python, not autosuite).
     """
 
-    def __init__(self,
-                 cmd_folder: Union[str, Path],  # TODO: Change to Path?
-                 element_config: Union[dict, None] = None,
-                 system_liquids: Union[dict, None] = None,
-                 stdout: bool = True,
-                 logfile: Union[str, Path, None] = None,
-                 simulation: bool = False,
-                 track_quantities: bool = False
-                 ) -> None:
+    def __init__(
+            self,
+            cmd_folder: Union[str, Path],
+            element_config: Union[dict, None] = None,
+            system_liquids: Union[dict, None] = None,
+            stdout: bool = True,
+            logfile: Union[str, Path, None] = None,
+            simulation: bool = False,
+            track_quantities: bool = False
+    ) -> None:
         """
         Initializes the ChemspeedController by:
             - setting up the paths to the communication files
@@ -56,9 +57,9 @@ class ChemspeedController:
         self.simulation = simulation
 
         if not element_config:
-            element_config: dict = load_json(DEFAULTS_PATH / "element_config.json")
+            element_config: dict = load_json(ELEMENTS)
         if not system_liquids:
-            system_liquids = load_json(DEFAULTS_PATH / "system_liquids.json")
+            system_liquids = load_json(SYSTEM_LIQUIDS)
         self.system_liquids: dict = system_liquids
         self.elements, self.wells = initialize_zones(element_config, track_quantities)
 

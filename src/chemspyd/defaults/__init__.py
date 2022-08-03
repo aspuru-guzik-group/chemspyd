@@ -1,4 +1,4 @@
 from pathlib import Path
 
-DEFAULTS_PATH = Path(__file__).parent
-
+ELEMENTS: Path = Path(__file__).parent / "element_config.json"
+SYSTEM_LIQUIDS: Path = Path(__file__).parent / "system_liquids.json"
