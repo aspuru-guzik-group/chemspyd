@@ -1,0 +1,38 @@
+For each existing functions the following must be done:
+    - ensure that all variables that can be manipulated in autosuite are implemented in the manager
+    - ensure that all variables that are implemented in the manager are implemented in the controller
+    - ensure that all variables are falling within the acceptable ranges of the chemspeed
+        - (check after all functions implemented)
+
+functions to check:
+        - (done) transfer_liquid()
+            - allow multiple aspirations
+            - allow multiple needle dispensation (needle 1 and 2)
+
+        - (done) transfer_liquid_bu()
+            - I believe this function can be removed or folded into
+
+        - (done) inject_liquid()
+
+    - transfer_solid()
+        - option for autodispense
+        - option for advanced parameters
+        - parameters sent in as dictionary
+
+    - transfer_solid_swile
+    - set_drawer()
+    - set_insynth_reflux()
+    - set_isynth_temperature()              # try to remove isynth specific functions
+    - set_isynth_stir()
+        - (done) set_stir()
+    - set_isynth_vacuum()
+    - set_isynth()
+        - (done) vial_transport()
+    - set_zone_state()
+        - (done) measure_level()
+        - (done) unmount_all()
+        - (done) stop_manager()
+    - read_status()
+
+functions in manager but not controller
+    - screwcapping()
