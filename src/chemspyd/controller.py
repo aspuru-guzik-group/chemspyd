@@ -4,11 +4,11 @@ from pathlib import Path
 import time
 from deprecation import deprecated
 
-from chemspyd import validate
-from chemspyd.exceptions.zone_exceptions import ZoneError
-from chemspyd.utils.zones import Zones, to_zone_string
 from chemspyd.utils.logging_utils import get_logger
 import chemspyd.utils.unit_conversions as units
+from chemspyd.defaults import *
+from chemspyd.utils import load_json
+from chemspyd.zones import Zone, WellGroup, initialize_zones
 
 if os.name == 'nt':
     import msvcrt
@@ -25,10 +25,13 @@ class ChemspeedController:
     """
 
     def __init__(self,
-                 cmd_folder: Union[str, Path],
+                 cmd_folder: Union[str, Path],  # TODO: Change to Path?
+                 element_config: Union[dict, None] = None,
+                 system_liquids: Union[dict, None] = None,
                  stdout: bool = True,
                  logfile: Union[str, Path, None] = None,
                  simulation: bool = False,
+                 track_quantities: bool = False
                  ) -> None:
         """
         Initializes the ChemspeedController by:
@@ -51,9 +54,14 @@ class ChemspeedController:
         self.logger = get_logger(stdout, logfile)
 
         self.simulation = simulation
-        self.valid_zones = validate.init_valid_zones()  # TODO: Discuss how to include zone / element handling here.
 
-        # TODO: create defaults folder and do everything from there
+        if not element_config:
+            element_config: dict = load_json(DEFAULTS_PATH / "element_config.json")
+        if not system_liquids:
+            system_liquids = load_json(DEFAULTS_PATH / "system_liquids.json")
+        self.system_liquids: dict = system_liquids
+        self.elements, self.wells = initialize_zones(element_config, track_quantities)
+
 
     #############################
     # Chemspeed Remote Statuses #
@@ -143,8 +151,8 @@ class ChemspeedController:
 
     def transfer_liquid(
             self,
-            source: Union[str, List[str]],
-            destination: Union[str, List[str]],
+            source: Zone,
+            destination: Zone,
             volume: float,
             src_flow: float = 10,
             dst_flow: float = 10,
@@ -155,8 +163,8 @@ class ChemspeedController:
             airgap: float = 0.01,
             post_airgap: float = 0,
             extra_volume: float = 0,
-            airgap_dst: Union[Zones, str] = 'WASTE',
-            extra_dst: Union[Zones, str] = 'WASTE',
+            airgap_dst: Zone = 'WASTE',
+            extra_dst: Zone = 'WASTE',
             equib_src: float = 0,
             equib_dst: float = 0,
             rinse_stn: int = 1,
@@ -187,18 +195,23 @@ class ChemspeedController:
             bu: true if dst is bottom-up, false if
 
         """
-        # checking that all parameters are valid:
-        # TODO: Validate all zones in args from Zones instances?
-        if not validate.validate_zones(self.valid_zones, source) or not validate.validate_zones(self.valid_zones,
-                                                                                                destination):
-            raise ZoneError('Invalid zones')
+        # Get different data types into uniform WellGroup data type
+        source_wells: WellGroup = WellGroup(source, well_configuration=self.wells)
+        destination_wells: WellGroup = WellGroup(destination, well_configuration=self.wells)
 
-        source = to_zone_string(source)
-        destination = to_zone_string(destination)
+        # Update well states and information
+        source_wells.remove_material(quantity=volume)
+        destination_wells.add_material(quantity=volume)
+
+        # Get correct rinse station
+        # TODO: Figure out if this is the best way to handle the case of needle = 0  -> default rinse station
+        if not needle == 0:
+            rinse_stn = self.system_liquids[str(needle)]["rinse_station"]
+
         self.execute(
             'transfer_liquid',
-            source,
-            destination,
+            source_wells.get_zone_string(),
+            destination_wells.get_zone_string(),
             volume,
             src_flow,
             dst_flow,
@@ -279,8 +292,8 @@ class ChemspeedController:
     @deprecated(deprecated_in="1.0", removed_in="2.0",
                 details="Deprecated. Use transfer_liquid instead, or refer to the routines sub-package.")
     def inject_liquid(self,
-                      source: Union[str, List[str]],
-                      destination: Union[str, List[str]],
+                      source: Zone,
+                      destination: Zone,
                       volume: float,
                       src_flow: float = 10,
                       src_bu: float = 3,
@@ -300,13 +313,18 @@ class ChemspeedController:
             dst_bu: needle bottoms up distance at destination (mm)
             rinse_volume: needle rinsing volume after action (mL)
         """
-        source = to_zone_string(source)
-        # check if there
-        destination = to_zone_string(destination)
+        # Get different data types into uniform WellGroup data type
+        source_wells: WellGroup = WellGroup(source, well_configuration=self.wells)
+        destination_wells: WellGroup = WellGroup(destination, well_configuration=self.wells)
+
+        # Update well states and information
+        source_wells.remove_material(quantity=volume)
+        destination_wells.add_material(quantity=volume)
+
         self.execute(
             'inject_liquid',
-            source,
-            destination,
+            source_wells.get_zone_string(),
+            destination_wells.get_zone_string(),
             volume,
             src_flow,
             src_bu,
@@ -317,8 +335,8 @@ class ChemspeedController:
 
     def transfer_solid(
             self,
-            source: Union[str, List[str]],
-            destination: Union[str, List[str]],
+            source: Zone,
+            destination: Zone,
             weight: float,
             height: float = 0,
             chunk: float = 0.1,
@@ -353,12 +371,18 @@ class ChemspeedController:
         Returns:
             weights (list of float): real dispense weights (mg)
         """
-        source = to_zone_string(source)
-        destination = to_zone_string(destination)
+        # Get different data types into uniform WellGroup data type
+        source_wells: WellGroup = WellGroup(source, well_configuration=self.wells)
+        destination_wells: WellGroup = WellGroup(destination, well_configuration=self.wells)
+
+        # Update well states and information
+        source_wells.remove_material(quantity=weight)
+        destination_wells.add_material(quantity=0)
+
         self.execute(
             'transfer_solid',
-            source,
-            destination,
+            source_wells.get_zone_string(),
+            destination_wells.get_zone_string(),
             weight,
             height,
             chunk,
@@ -381,8 +405,8 @@ class ChemspeedController:
 
     def transfer_solid_swile(
             self,
-            source: Union[str, List[str]],
-            destination: Union[str, List[str]],
+            source: Zone,
+            destination: Zone,
             weight: float,
             height=0,
             chunk=0.2,
@@ -412,12 +436,18 @@ class ChemspeedController:
             shake_angle: source vial shaking angle (rad)
             shake_time: source vial shaking time (s)
         """
-        source = to_zone_string(source)
-        destination = to_zone_string(destination)
+        # Get different data types into uniform WellGroup data type
+        source_wells: WellGroup = WellGroup(source, well_configuration=self.wells)
+        destination_wells: WellGroup = WellGroup(destination, well_configuration=self.wells)
+
+        # Update well states and information
+        source_wells.remove_material(quantity=weight)
+        destination_wells.add_material(quantity=0)
+
         self.execute(
             'transfer_solid_swile',
-            source,
-            destination,
+            source_wells.get_zone_string(),
+            destination_wells.get_zone_string(),
             weight,
             height,
             chunk,
@@ -429,7 +459,11 @@ class ChemspeedController:
             fd_amount
         )
 
-    def set_drawer(self, zone: Union[str, List[str]], state: str, environment: str = 'none'):
+    def set_drawer(
+            self,
+            zone: Zone,
+            state: str, environment: str = 'none'
+    ):
         """
         Setting ISYNTH drawer position. For accessing the vials in ISYNTH.
         Can set the vials under vacuum, inert or none state.
@@ -439,21 +473,45 @@ class ChemspeedController:
             state (str): drawer open state (open, close)
             environment (str): environment state the zone will be in (inert, vacuum, none)
         """
-        zone = to_zone_string(zone)
-        self.execute('set_drawer', zone, state, environment)
+        zone = WellGroup(zone, well_configuration=self.wells)
+        zone.set_parameter("drawer", state)
+        zone.set_parameter("environment", environment)
 
-    @deprecated(deprecated_in="1.0", removed_in="2.0",
+        self.execute(
+            'set_drawer',
+            zone.get_zone_string(),
+            state,
+            environment
+        )
+
+    @deprecated(deprecated_in="chemspyd-1.0", removed_in="chemspyd-2.0",
                 details="ISYNTH-specific methods will be deprecated. Use set_reflux instead.")
-    def set_isynth_reflux(self, state: str, temperature: float = 15):
+    def set_isynth_reflux(
+            self,
+            state: str,
+            temperature: float = 15
+    ) -> None:
         """Setting ISYNTH reflux chilling temperature.
 
         Args:
             state (str): cryostat state (on, off)
             temperature (float): temperature to set at when cryostat is on (C)
         """
-        self.execute('set_isynth_reflux', state, temperature)
+        self.elements["ISYNTH"].validate_parameter("reflux", state)
+        self.elements["ISYNTH"].validate_parameter("reflux_temperature", temperature)
 
-    def set_reflux(self, reflux_zone: str, state: str, temperature: float = 0):
+        self.execute(
+            'set_isynth_reflux',
+            state,
+            temperature
+        )
+
+    def set_reflux(
+            self,
+            reflux_zone: Zone,
+            state: str,
+            temperature: float = 0
+    ) -> None:
         """
         Sets the reflux chilling temperature on a defined zone.
 
@@ -467,11 +525,25 @@ class ChemspeedController:
         """
         raise NotImplementedError
         # TODO: Implement the proper set_reflux function on the Manager.
-        self.execute("set_reflux", reflux_zone, state, temperature)
+        reflux_zone = WellGroup(reflux_zone, self.wells)
+        reflux_zone.set_parameter("reflux", state)
+        reflux_zone.set_parameter("reflux_temperature", temperature)
 
-    @deprecated(deprecated_in="1.0", removed_in="2.0",
+        self.execute(
+            "set_reflux",
+            reflux_zone.get_element_string(),
+            state,
+            temperature
+        )
+
+    @deprecated(deprecated_in="chemspyd-1.0", removed_in="chemspyd-2.0",
                 details="ISYNTH-specific methods will be deprecated. Use set_temperature instead.")
-    def set_isynth_temperature(self, state: str, temperature: float = 15, ramp: float = 0):
+    def set_isynth_temperature(
+            self,
+            state: str,
+            temperature: float = 15,
+            ramp: float = 0
+    ) -> None:
         """Setting ISYNTH heating temperature.
 
         Args:
@@ -479,9 +551,24 @@ class ChemspeedController:
             temperature (float): temperature to set at when cryostat is on (C)
             ramp (float): ramping speed for the temperature (C/min)
         """
-        self.execute('set_isynth_temperature', state, temperature, ramp)
+        self.elements["ISYNTH"].validate_parameter("thermostat", state)
+        self.elements["ISYNTH"].validate_parameter("thermostat_temperature", temperature)
+        self.elements["ISYNTH"].validate_parameter("thermostat_ramp", ramp)
 
-    def set_temperature(self, temp_zone: str, state: str, temperature: float = 20, ramp: float = 0):
+        self.execute(
+            'set_isynth_temperature',
+            state,
+            temperature,
+            ramp
+        )
+
+    def set_temperature(
+            self,
+            temp_zone: Zone,
+            state: str,
+            temperature: float = 20,
+            ramp: float = 0
+    ) -> None:
         """
         Sets the heating temperature for a given element.
 
@@ -494,64 +581,121 @@ class ChemspeedController:
         """
         raise NotImplementedError
         # TODO: Implement the proper set_temperature function on the Manager.
-        self.execute("set_temperature", temp_zone, state, temperature, ramp)
+        temp_zone = WellGroup(temp_zone, self.wells)
+        temp_zone.set_parameter("thermostat", state)
+        temp_zone.set_parameter("thermostat_temperature", temperature)
+        temp_zone.set_parameter("thermostat_ramp", ramp)
 
-    @deprecated(deprecated_in="1.0", removed_in="2.0",
+        self.execute(
+            "set_temperature",
+            temp_zone.get_zone_string(),
+            state,
+            temperature,
+            ramp
+        )
+
+    @deprecated(deprecated_in="chemspyd-1.0", removed_in="chemspyd-2.0",
                 details="ISYNTH-specific methods will be deprecated. Use set_stir instead.")
-    def set_isynth_stir(self, state: str, rpm: float = 200):
+    def set_isynth_stir(
+            self,
+            state: str,
+            rpm: float = 200
+    ) -> None:
         """Setting ISYNTH vortex speed.
 
         Args:
             state (str): vortex state (on, off)
             rpm (float): vortex rotation speed (rpm)
         """
-        self.execute('set_isynth_stir', state, rpm)
+        self.elements["ISYNTH"].validate_parameter("stir", state)
+        self.elements["ISYNTH"].validate_parameter("stir_rate", rpm)
 
-    def set_stir(self, stir_zone: str, state: str, rpm: float = 0):
-        """Set stirring.
+        self.execute(
+            'set_isynth_stir',
+            state,
+            rpm
+        )
 
-        ATTN: Currently, the stir_zone is not compatible with "classical" zone / well definitions.
+    def set_stir(
+            self,
+            stir_zone: Zone,
+            state: str,
+            rpm: float = 0
+    ) -> None:
+        """
+        Set stirring.
 
         Args:
-            stir_zone (str): rack to stir (ISYNTH, RACK_HS)
+            stir_zone (str): Wells to be stirred
             state (str): stir state (on, off)
             rpm (float): stir rotation speed (rpm)
         """
-        if not stir_zone == 'ISYNTH' or stir_zone == 'RACK_HS':
-            raise ZoneError(f"{stir_zone} zone cannot be stirred.")
-        if not (stir_zone == 'RACK_HS' and rpm <= 400) or (stir_zone == 'ISYNTH' and rpm <= 1600):
-            ZoneError(f"RPM out of range for {stir_zone}.")
+        stir_zone = WellGroup(stir_zone, self.wells)
+        stir_zone.set_parameter("stir", state)
+        stir_zone.set_parameter("stir_rate", rpm)
 
         self.unmount_all()
-        self.execute('set_stir', stir_zone, state, rpm)
+        self.execute(
+            'set_stir',
+            stir_zone.get_element_string(),
+            state,
+            rpm
+        )
 
-    @deprecated(deprecated_in="1.0", removed_in="2.0",
+    @deprecated(deprecated_in="chemspyd-1.0", removed_in="chemspyd-2.0",
                 details="ISYNTH-specific methods will be deprecated. Use set_vacuum instead.")
-    def set_isynth_vacuum(self, state: str, vacuum: float = 1000):
+    def set_isynth_vacuum(
+            self,
+            state: str,
+            vacuum: float = 1000
+    ) -> None:
         """Setting ISYNTH vacuum pressure.
 
         Args:
             state (str): vacuum pump state (on, off)
             vacuum (float): vacuum pressure level (mbar)
         """
-        self.execute('set_isynth_vacuum', state, vacuum)
+        self.elements["ISYNTH"].validate_parameter("vacuum_pump", state)
+        self.elements["ISYNTH"].validate_parameter("vacuum_pump_pressure", vacuum)
 
-    def set_vacuum(self, vac_zone: str, state: str, vacuum: float = 1000):
+        self.execute(
+            'set_isynth_vacuum',
+            state,
+            vacuum
+        )
+
+    def set_vacuum(
+            self,
+            vac_zone: Zone,
+            state: str,
+            vacuum: float = 1000
+    ) -> None:
         """
         Sets the heating temperature for a given element.
 
         Args:
-            vac_zone: Zone to be set under vacuum (ISYNTH)
+            vac_zone: Zone to be set under vacuum
             state: Vacuum pump state state (on, off)
             vacuum: Pressure to set the vacuum pump to.
         """
         raise NotImplementedError
         # TODO: Implement the proper set_vacuum function on the Manager.
-        self.execute("set_vacuum", vac_zone, state, vacuum)
+        vac_zone = WellGroup(vac_zone, self.wells)
+        vac_zone.set_parameter("vacuum_pump", state)
+        vac_zone.set_parameter("vacuum_pump_pressure", vacuum)
+        self.execute(
+            "set_vacuum",
+            vac_zone.get_element_string(),
+            state,
+            vacuum
+        )
 
-    @deprecated(deprecated_in="1.0", removed_in="2.0",
+    @deprecated(deprecated_in="chemspyd-1.0", removed_in="chemspyd-2.0",
                 details="ISYNTH-specific methods will be deprecated. Use operation-specific methods instead.")
-    def set_isynth(self, **kwargs: Union[None, str, float]):
+    def set_isynth(
+            self,
+            **kwargs: Union[None, str, float]
+    ) -> None:
         """Setting ISYNTH values. The following values can be [None, str, float]. If set at None, no change to current state.
         If "off" then turns off. If set to a value, then the system will turn on and set to that value.
         You have to specify the values to be set. For example, set_isynth(reflux=15) not set_isynth(15).
@@ -574,12 +718,14 @@ class ChemspeedController:
                 method('on', value)
         return
 
-    def vial_transport(self,
-                       source: str,
-                       destination: str,
-                       gripping_force: float = 10,
-                       gripping_depth: float = 7.5,
-                       push_in: bool = True):
+    def vial_transport(
+            self,
+            source: str,
+            destination: str,
+            gripping_force: float = 10,
+            gripping_depth: float = 7.5,
+            push_in: bool = True
+    ) -> None:
         """ Vial Transport
 
         Args (float for non specified type):
@@ -589,18 +735,22 @@ class ChemspeedController:
             gripping_depth (float): gripping depth for the distance (down) to picking it up (mm)
         """
         # TODO: exclude crashing for certain zones
-        source = to_zone_string(source)
-        destination = to_zone_string(destination)
+        source = WellGroup(source, well_configuration=self.wells)
+        destination = WellGroup(destination, well_configuration=self.wells)
         self.execute(
             'vial_transport',
-            source,
-            destination,
+            source.get_zone_string(),
+            destination.get_zone_string(),
             gripping_force,
             gripping_depth,
             push_in
         )
 
-    def set_zone_state(self, zone: str, state: bool = True):
+    def set_zone_state(
+            self,
+            zone: Zone,
+            state: bool = True
+    ) -> None:
         """Setting the 'Enabled' state of the zone. Certain operations may turn off the availability of a zone.
         Use this to re-enable. For example, solid dispensing error may result in disabling the powder container to be used.
 
@@ -608,17 +758,24 @@ class ChemspeedController:
             zone (str, list): zones to change the state
             state (bool): Enable or disable (True, False)
         """
-        zone = to_zone_string(zone)
-        self.execute('set_zone_state', zone, int(state))
+        zone = WellGroup(zone, well_configuration=self.wells)
+        self.execute(
+            'set_zone_state',
+            zone.get_zone_string(),
+            int(state)
+        )
 
-    def measure_level(self, zone: Union[str, List[str]]):
+    def measure_level(
+            self,
+            zone: Zone
+    ) -> List[float]:
         """Measure material level.
 
         Args:
-            zone (str, list): zones to measure
+            zone (Zone): zones to measure
         """
-        zone = to_zone_string(zone)
-        self.execute('measure_level', zone)
+        zone = WellGroup(zone, well_configuration=self.wells)
+        self.execute('measure_level', zone.get_zone_string())
 
         with open(self.ret_file, 'r') as f:
             levels_str = f.readline().split(',')[:-1]
@@ -632,7 +789,10 @@ class ChemspeedController:
         """Stopping the manager safely from the python controller"""
         self.execute('stop_manager')
 
-    def read_status(self, key: Union[None, str] = None) -> Union[Dict[str, float], float]:
+    def read_status(
+            self,
+            key: Union[None, str] = None
+    ) -> Union[Dict[str, float], float]:
         """Reading the Chemspeed status during idle.
 
         Args:
@@ -660,7 +820,10 @@ class ChemspeedController:
         else:
             return status
 
-    def wait(self, duration: int) -> None:
+    def wait(
+            self,
+            duration: int
+    ) -> None:
         """
         waits for a set duration
         can be cancelled by hitting q

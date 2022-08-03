@@ -1,0 +1,188 @@
+{
+  "ISYNTH": {
+    "no_wells": 48,
+    "max_quantity": 8,
+    "default_quantity": 0,
+    "addable": true,
+    "removable": true,
+    "thermostat": ["on", "off"],
+    "thermostat_temperature": [-20, 150],
+    "thermostat_ramp": [0, 100],
+    "stir": ["on", "off"],
+    "stir_rate": [0, 400],
+    "reflux": ["on", "off"],
+    "reflux_temperature": [0, 150],
+    "vacuum_pump": ["on", "off"],
+    "vacuum_pump_pressure": [1, 1000],
+    "drawer": ["open", "close"],
+    "environment": ["none", "vacuum", "inert"],
+    "states": {
+      "default": "ISYNTH"
+    }
+  },
+  "RACKL": {
+    "no_wells": 80,
+    "max_quantity": 8,
+    "default_quantity": 0,
+    "addable": true,
+    "removable": true,
+    "thermostat": null,
+    "stir": null,
+    "reflux": null,
+    "vacuum_pump": null,
+    "drawer": null,
+    "environment": null,
+    "states": {
+      "default": "RACKL"
+    }
+  },
+  "RACKR": {
+    "no_wells": 30,
+    "max_quantity": 20,
+    "default_quantity": 0,
+    "addable": true,
+    "removable": true,
+    "thermostat": null,
+    "stir": null,
+    "reflux": null,
+    "vacuum_pump": null,
+    "drawer": null,
+    "environment": null,
+    "states": {
+      "default": "RACKR"
+    }
+  },
+  "RACK4ML": {
+    "no_wells": 24,
+    "max_quantity": 4,
+    "default_quantity": 0,
+    "addable": true,
+    "removable": true,
+    "thermostat": null,
+    "stir": null,
+    "reflux": null,
+    "vacuum_pump": null,
+    "drawer": null,
+    "environment": null,
+    "states": {
+      "default": "RACK4ML"
+    }
+  },
+  "RACK4ML2": {
+    "no_wells": 24,
+    "max_quantity": 4,
+    "default_quantity": 0,
+    "addable": true,
+    "removable": true,
+    "thermostat": null,
+    "stir": null,
+    "reflux": null,
+    "vacuum_pump": null,
+    "drawer": null,
+    "environment": null,
+    "states": {
+      "default": "RACK4ML2"
+    }
+  },
+  "SOLID": {
+    "no_wells": 16,
+    "max_quantity": 10000,
+    "default_quantity": 10000,
+    "addable": false,
+    "removable": true,
+    "thermostat": null,
+    "stir": null,
+    "reflux": null,
+    "vacuum_pump": null,
+    "drawer": null,
+    "environment": null,
+    "states": {
+      "default": "SOLID"
+    }
+  },
+  "VALVEB": {
+    "no_wells": 4,
+    "max_quantity": 4000,
+    "default_quantity": 4000,
+    "addable": false,
+    "removable": true,
+    "thermostat": null,
+    "stir": null,
+    "reflux": null,
+    "vacuum_pump": null,
+    "drawer": null,
+    "environment": null,
+    "states": {
+      "default": "VALVEB"
+    }
+  },
+  "SPE": {
+    "no_wells": 80,
+    "max_quantity": 8,
+    "default_quantity": 0,
+    "addable": true,
+    "removable": true,
+    "thermostat": null,
+    "stir": null,
+    "reflux": null,
+    "vacuum_pump": null,
+    "drawer": null,
+    "environment": null,
+    "states": {
+      "default": "SPE_D",
+      "draw": "SPE_D",
+      "waste": "SPE_W",
+      "collect": "SPE_C"
+    }
+  },
+  "INJECT": {
+    "no_wells": 2,
+    "max_quantity": null,
+    "default_quantity": null,
+    "addable": true,
+    "removable": false,
+    "thermostat": null,
+    "stir": null,
+    "reflux": null,
+    "vacuum_pump": null,
+    "drawer": null,
+    "environment": null,
+    "states": {
+      "default": "INJECT_I",
+      "load": "INJECT_L",
+      "inject": "INEJCT_I"
+    }
+  },
+  "WASTE1": {
+    "no_wells": 4,
+    "max_quantity": null,
+    "default_quantity": null,
+    "addable": true,
+    "removable": false,
+    "thermostat": null,
+    "stir": null,
+    "reflux": null,
+    "vacuum_pump": null,
+    "drawer": null,
+    "environment": null,
+    "states": {
+      "default": "WASTE1"
+    }
+  },
+  "WASTE2": {
+    "no_wells": 4,
+    "max_quantity": null,
+    "default_quantity": null,
+    "addable": true,
+    "removable": false,
+    "thermostat": null,
+    "stir": null,
+    "reflux": null,
+    "vacuum_pump": null,
+    "drawer": null,
+    "environment": null,
+    "states": {
+      "default": "WASTE2"
+    }
+  }
+}
