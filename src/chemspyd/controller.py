@@ -3,18 +3,13 @@ import os
 import time
 from deprecation import deprecated
 
-from chemspyd import validate
-from chemspyd.exceptions.zone_exceptions import ZoneError
-from chemspyd.utils.zones import Zones, to_zone_string
 import chemspyd.utils.unit_conversions as units
 from chemspyd.defaults import *
 from chemspyd.utils import load_json
-from chemspyd.utils import ChemspeedElement, Well, WellGroup, initialize_zones
+from chemspyd.zones import Zone, WellGroup, initialize_zones
+
 if os.name == 'nt':
     import msvcrt
-
-
-Zone: type = Union[str, Well, List[str], List[Well]]
 
 
 class ChemspeedController:
@@ -29,7 +24,8 @@ class ChemspeedController:
 
     def __init__(self,
                  cmd_folder: str,  # TODO: Change to Path?
-                 hardware_config: Union[dict, None] = None,
+                 element_config: Union[dict, None] = None,
+                 system_liquids: Union[dict, None] = None,
                  stdout: bool = True,
                  logfile: str = '',  # TODO: Change to Path?
                  simulation: bool = False,
@@ -44,11 +40,13 @@ class ChemspeedController:
         self.stdout = stdout
         self.logfile = logfile
         self.simulation = simulation
-        self.valid_zones = validate.init_valid_zones()
 
-        if not hardware_config:
-            hardware_config: dict = load_json(DEFAULTS_PATH / "hardware_config.json")
-        self.elements, self.wells = initialize_zones(hardware_config, track_quantities)
+        if not element_config:
+            element_config: dict = load_json(DEFAULTS_PATH / "element_config.json")
+        if not system_liquids:
+            system_liquids = load_json(DEFAULTS_PATH / "system_liquids.json")
+        self.system_liquids: dict = system_liquids
+        self.elements, self.wells = initialize_zones(element_config, track_quantities)
 
     #############################
     # Chemspeed Remote Statuses #
@@ -173,6 +171,11 @@ class ChemspeedController:
         # Update well states and information
         source_wells.remove_material(quantity=volume)
         destination_wells.add_material(quantity=volume)
+
+        # Get correct rinse station
+        # TODO: Figure out if this is the best way to handle the case of needle = 0  -> default rinse station
+        if not needle == 0:
+            rinse_stn = self.system_liquids[str(needle)]["rinse_station"]
 
         self.execute(
             'transfer_liquid',
@@ -342,7 +345,7 @@ class ChemspeedController:
 
         # Update well states and information
         source_wells.remove_material(quantity=weight)
-        destination_wells.add_material(quantity=weight)
+        destination_wells.add_material(quantity=0)
 
         self.execute(
             'transfer_solid',
@@ -404,7 +407,7 @@ class ChemspeedController:
 
         # Update well states and information
         source_wells.remove_material(quantity=weight)
-        destination_wells.add_material(quantity=weight)
+        destination_wells.add_material(quantity=0)
 
         self.execute(
             'transfer_solid_swile',
@@ -436,7 +439,7 @@ class ChemspeedController:
             environment (str): environment state the zone will be in (inert, vacuum, none)
         """
         zone = WellGroup(zone, well_configuration=self.wells)
-        zone.set_parameter("drawer_state", state)
+        zone.set_parameter("drawer", state)
         zone.set_parameter("environment", environment)
 
         self.execute(
@@ -446,7 +449,7 @@ class ChemspeedController:
             environment
         )
 
-    @deprecated(deprecated_in="1.0", removed_in="2.0",
+    @deprecated(deprecated_in="chemspyd-1.0", removed_in="chemspyd-2.0",
                 details="ISYNTH-specific methods will be deprecated. Use set_reflux instead.")
     def set_isynth_reflux(
             self,
@@ -498,7 +501,7 @@ class ChemspeedController:
             temperature
         )
 
-    @deprecated(deprecated_in="1.0", removed_in="2.0",
+    @deprecated(deprecated_in="chemspyd-1.0", removed_in="chemspyd-2.0",
                 details="ISYNTH-specific methods will be deprecated. Use set_temperature instead.")
     def set_isynth_temperature(
             self,
@@ -556,7 +559,7 @@ class ChemspeedController:
             ramp
         )
 
-    @deprecated(deprecated_in="1.0", removed_in="2.0",
+    @deprecated(deprecated_in="chemspyd-1.0", removed_in="chemspyd-2.0",
                 details="ISYNTH-specific methods will be deprecated. Use set_stir instead.")
     def set_isynth_stir(
             self,
@@ -604,7 +607,7 @@ class ChemspeedController:
             rpm
         )
 
-    @deprecated(deprecated_in="1.0", removed_in="2.0",
+    @deprecated(deprecated_in="chemspyd-1.0", removed_in="chemspyd-2.0",
                 details="ISYNTH-specific methods will be deprecated. Use set_vacuum instead.")
     def set_isynth_vacuum(
             self,
@@ -652,7 +655,7 @@ class ChemspeedController:
             vacuum
         )
 
-    @deprecated(deprecated_in="1.0", removed_in="2.0",
+    @deprecated(deprecated_in="chemspyd-1.0", removed_in="chemspyd-2.0",
                 details="ISYNTH-specific methods will be deprecated. Use operation-specific methods instead.")
     def set_isynth(
             self,
@@ -708,7 +711,11 @@ class ChemspeedController:
             push_in
         )
 
-    def set_zone_state(self, zone: str, state: bool = True):
+    def set_zone_state(
+            self,
+            zone: Zone,
+            state: bool = True
+    ) -> None:
         """Setting the 'Enabled' state of the zone. Certain operations may turn off the availability of a zone.
         Use this to re-enable. For example, solid dispensing error may result in disabling the powder container to be used.
 
@@ -716,20 +723,24 @@ class ChemspeedController:
             zone (str, list): zones to change the state
             state (bool): Enable or disable (True, False)
         """
-        zone = to_zone_string(zone)
-        self.execute('set_zone_state', zone, int(state))
+        zone = WellGroup(zone, well_configuration=self.wells)
+        self.execute(
+            'set_zone_state',
+            zone.get_zone_string(),
+            int(state)
+        )
 
     def measure_level(
             self,
-            zone: Union[str, List[str]]
+            zone: Zone
     ) -> List[float]:
         """Measure material level.
 
         Args:
-            zone (str, list): zones to measure
+            zone (Zone): zones to measure
         """
-        zone = to_zone_string(zone)
-        self.execute('measure_level', zone)
+        zone = WellGroup(zone, well_configuration=self.wells)
+        self.execute('measure_level', zone.get_zone_string())
 
         with open(self.ret_file, 'r') as f:
             levels_str = f.readline().split(',')[:-1]

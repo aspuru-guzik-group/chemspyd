@@ -1,9 +1,9 @@
 import time
-from typing import List, Union
+from typing import Union
 
 from chemspyd import ChemspeedController
-from chemspyd.exceptions.zone_exceptions import InvalidZoneError
-from chemspyd.utils.zones import get_return_dst, to_zone_string
+from chemspyd.zones import Zone, WellGroup
+from chemspyd.exceptions import ChemspeedConfigurationError
 from chemspyd.utils.unit_conversions import hours_to_seconds
 
 
@@ -23,13 +23,11 @@ def prime_pumps(
     Returns:
         None
     """
-    if pump not in range(1, 5):
-        raise InvalidZoneError(f"Pump {pump} is not a valid zone.")
-
-    src = f'VALVEB:{pump}'
-    dst = get_return_dst(src)
-
-    # TODO: currently, the number of pumps and source-dst mapping are hard-coded
+    try:
+        src = mgr.system_liquids[str(pump)]["liquid_zone"]
+        dst = mgr.system_liquids[str(pump)]["waste_zone"]
+    except KeyError:
+        raise ChemspeedConfigurationError("The specified zone does not exist.")
 
     mgr.transfer_liquid(
         source=src,
@@ -38,24 +36,24 @@ def prime_pumps(
         src_flow=20,
         dst_flow=40,
         rinse_volume=0)
-    print('Pumps primed.')
 
 
-def inject_to_hplc(mgr: ChemspeedController,
-                   source: Union[str, List[str]],
-                   destination: Union[str, List[str]],
-                   volume: float,
-                   src_flow: float = 10,
-                   src_bu: float = 3,
-                   dst_flow: float = 0.5,
-                   dst_bu: float = 0,
-                   rinse_volume: float = 2,
-                   ) -> None:
+def inject_to_hplc(
+        mgr: ChemspeedController,
+        source: Zone,
+        destination: Zone,
+        volume: float,
+        src_flow: float = 10,
+        src_bu: float = 3,
+        dst_flow: float = 0.5,
+        dst_bu: float = 0,
+        rinse_volume: float = 2,
+) -> None:
     """Inject liquid to the injection ports. This will use volume+0.1ml of liquid.
 
      Args (float for non specified type):
-        source (str, list): zone for transfer source
-        destination (str, list): zone for injection, can only be INJECT_I or INJECT_L
+        source (Zone): zone for transfer source
+        destination (Zone): zone for injection, can only be INJECT_I or INJECT_L
         volume: volume to transfer (mL)
         src_flow: draw speed at source (mL/min)
         src_bu: needle bottoms up distance at source (mm)
@@ -63,14 +61,12 @@ def inject_to_hplc(mgr: ChemspeedController,
         dst_bu: needle bottoms up distance at destination (mm)
         rinse_volume: needle rinsing volume after action (mL)
         """
-    source = to_zone_string(source)
-    # check if there
-    destination = to_zone_string(destination)
+    source = WellGroup(source, well_configuration=mgr.wells)
+    destination = WellGroup(destination, well_configuration=mgr.wells, state="load")
 
-    # TODO: Review that there are no important changes between inject_liquid() and transfer_liquid()!
     mgr.transfer_liquid(
-        source=source,
-        destination=destination,
+        source=source.get_zone_string(),
+        destination=destination.get_zone_string(),
         volume=volume,
         src_flow=src_flow,
         src_bu=src_bu,
@@ -83,7 +79,7 @@ def inject_to_hplc(mgr: ChemspeedController,
 
 def do_schlenk_cycles(
         mgr: ChemspeedController,
-        wells: Union[str, List[str]],
+        wells: Zone,
         evac_time: int = 60,
         backfill_time: int = 30,
         vacuum_pressure: float = 1,
@@ -92,6 +88,7 @@ def do_schlenk_cycles(
     """
     Performs Schlenk Cycles (evacuate-refill cycles) on the specified wells.
     Requires the wells to be in an element that supports vacuum/inert gas handling.
+
     ATTN: Might also influence neighboring wells (e.g. if they are in the same ISYNTH drawer).
 
     Args:
@@ -105,14 +102,14 @@ def do_schlenk_cycles(
     for _ in range(no_cycles):
         # Evacuation
         mgr.set_drawer(zone=wells, state="close", environment="vacuum")
-        time.sleep(0.5)  # TODO: Implemented because of random communication delays. Test if it is necessary.
-        mgr.set_isynth_vacuum(state="on", vacuum=vacuum_pressure)
+        time.sleep(0.5)  # ATTN: Implemented because of random communication delays. Test if it is necessary.
+        mgr.set_vacuum(vac_zone=wells, state="on", vacuum=vacuum_pressure)
         mgr.wait(evac_time)
 
         # Backfilling
         mgr.set_drawer(zone=wells, state="close", environment="inert")
-        time.sleep(0.5)  # TODO: Implemented because of random communication delays. Test if it is necessary.
-        mgr.set_isynth_vacuum(state="on", vacuum=1000)
+        time.sleep(0.5)  # ATTN: Implemented because of random communication delays. Test if it is necessary.
+        mgr.set_vacuum(vac_zone=wells, state="on", vacuum=1000)
         mgr.wait(backfill_time)
 
     mgr.set_isynth_vacuum(state="off")
@@ -121,7 +118,8 @@ def do_schlenk_cycles(
 
 def heat_under_reflux(
         mgr: ChemspeedController,
-        wells: Union[str, List[str]],
+        wells: Zone,
+        stir_rate: float,
         temperature: float,
         heating_hours: int,
         cooling_hours: int,
@@ -131,11 +129,14 @@ def heat_under_reflux(
     """
     Sets up the heating and the reflux condenser for a specified time period.
     Cools the system back to room temperature for a specified cooling period.
-    ATTN: Might also influence neighboring vials (e.g. it can only heat the
+
+    ATTN: Might also influence neighboring vials (e.g. it can only heat the entire element).
+          Maybe this should be taken into account somehow.
 
     Args:
         mgr: ChemspeedController object.
         wells: Wells to be heated under reflux.
+        stir_rate: Stir rate (in rpm).
         temperature: Heating temperature (in °C)
         heating_hours: Heating time (in h).
         cooling_hours: Cooling time (in h).
@@ -144,32 +145,34 @@ def heat_under_reflux(
     """
     mgr.set_reflux(wells, state="on", temperature=condenser_temperature)
     mgr.set_temperature(wells, state="on", temperature=temperature, ramp=ramp)
+    mgr.set_stir(wells, state="on", rpm=stir_rate)
     mgr.wait(hours_to_seconds(heating_hours))
     mgr.set_temperature(wells, state="on", temperature=20, ramp=ramp)
     mgr.wait(cooling_hours)
     mgr.set_temperature(wells, state="off")
     mgr.set_reflux(wells, state="off")
+    mgr.set_stir(wells, state="off")
 
 
 def filter_liquid(
         mgr: ChemspeedController,
-        source_well: Union[str, List[str]],
-        filtration_zone: Union[str, List[str]],
+        source_well: Zone,
+        filtration_zone: Zone,
         filtration_volume: float,
         collect_filtrate: bool = True,
-        wash_liquid: Union[str, List[str]] = "",
+        wash_liquid: Zone = "",
         wash_volume: float = 0,
         collect_wash: bool = False,
-        eluent: Union[str, List[str]] = "",
+        eluent: Zone = "",
         eluent_volume: float = 0
 ):
     """
-    Filters a liquid sample through a filter.
+    Filters a liquid sample on a filtration rack. Allows for collecting the filtrate, washing and eluting the filter.
 
     Args:
         mgr: ChemspeedController object.
         source_well: Source well of the sample to be filtered.
-        filtration_zone: Zone on the filtration rack to be used   ATTN: What exactly is this?
+        filtration_zone: Zone on the filtration rack to be used. All "sub-zones" (SPE_D, SPE_C, SPE_W can be used).
         filtration_volume: Volume (in mL) of liquid to be filtered.
         collect_filtrate: Whether to collect or dispose the filtrate
         wash_liquid: Source zone of the wash liquid.
@@ -177,37 +180,34 @@ def filter_liquid(
         collect_wash: Whether to collect or dispose the wash liquid.
         eluent: Source zone of the eluent.
         eluent_volume: Volume of eluent to be used.
-
-    TODO: How should this specifically be set up?
-        - What is the source / target zone? A specific collection / drawing / waste zone? Or just the "Number" on the SPE rack? Requires Well / Zone objects?
-        - Which options should be provided? Wash? Elute?
-
-    TODO: Discuss if bool arguments (wash, elution) are necessary or can be identical to volume > 0
     """
-    # raise NotImplementedError
+    filtration_zone = WellGroup(filtration_zone, mgr.wells)
+    filtrate_state: str = "collect" if collect_filtrate else "waste"
+    wash_state: str = "collect" if collect_wash else "waste"
 
-    collect_zone, waste_zone = get_filtration_zones(filtration_zone)  # TODO: implement this method?
-
-    filtrate_zone: str = collect_zone if collect_filtrate else waste_zone # TODO: adapt to zone architecture
-
+    # Transfer liquid to filtration zone and collect or dispose the filtrate
+    filtration_zone.set_state(filtrate_state)
     mgr.transfer_liquid(
         source=source_well,
-        destination=filtrate_zone,
+        destination=filtration_zone.well_list,
         volume=filtration_volume
     )
 
+    # Wash the filter and collect or dispose the wash liquid
     if wash_volume > 0:
-        wash_zone: str = collect_zone if collect_wash else waste_zone
+        filtration_zone.set_state(wash_state)
         mgr.transfer_liquid(
             source=wash_liquid,
-            destination=wash_zone,
+            destination=filtration_zone.well_list,
             volume=wash_volume
         )
 
+    # Elute from the filter and collect the eluent.
     if eluent_volume > 0:
+        filtration_zone.set_state("collect")
         mgr.transfer_liquid(
             source=eluent,
-            destination=collect_zone,
+            destination=filtration_zone.well_list,
             volume=eluent_volume
         )
 
