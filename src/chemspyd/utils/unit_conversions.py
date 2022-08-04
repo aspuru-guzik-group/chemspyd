@@ -44,6 +44,19 @@ def pressure_pa_to_mbar(pressure_pa: float) -> float:
     return round(pressure_pa / 100., 5)
 
 
+def convert_mass(mass: float, original: str = "kilo", dst: str = "milli") -> float:
+    """
+    Converts a mass from one mass unit to another..
+
+    Args:
+        mass: Value of the mass
+        original: Prefix of the mass passed (default: "kilo" -> kg)
+        dst: Desired prefix of the mass (default: "milli" -> mg)
+    """
+    mass_converted: float = mass * eval(original) / eval(dst)
+    return round(mass_converted, 1)
+
+
 def no_change(value: Any) -> Any:
     """Leave value unchanged. Here to allow convenient mapping of values to
     converter functions.

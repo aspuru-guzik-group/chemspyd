@@ -7,7 +7,7 @@ from deprecation import deprecated
 from chemspyd.utils.logging_utils import get_logger
 import chemspyd.utils.unit_conversions as units
 from chemspyd.defaults import *
-from chemspyd.utils import load_json
+from chemspyd.utils import load_json, read_csv, write_csv
 from chemspyd.zones import Zone, WellGroup, initialize_zones
 
 if os.name == 'nt':
@@ -75,12 +75,13 @@ class ChemspeedController:
         Returns:
             bool: True if the instrument is idle, else False.
         """
-        # TODO: Write utility methods for reading / writing files etc?
+        rsp_readout: list = read_csv(self.rsp_file, single_line=True)
+        return rsp_readout[0] == "1"
 
-        with open(self.rsp_file, 'r') as f:
-            line = f.readline()
-        message = line.split(',')
-        return message[0] == '1'
+#         with open(self.rsp_file, 'r') as f:
+#            line = f.readline()
+#        message = line.split(',')
+#        return message[0] == '1'
 
     def _chemspeed_newcmd(self) -> bool:
         """
@@ -89,10 +90,13 @@ class ChemspeedController:
         Returns:
             bool: True if it has received a new command, else False.
         """
-        with open(self.cmd_file, 'r') as f:
-            line = f.readline()
-        message = line.split(',')
-        return message[0] == '1'
+        cmd_readout: list = read_csv(self.cmd_file, single_line=True)
+        return cmd_readout[0] == "1"
+
+#        with open(self.cmd_file, 'r') as f:
+#            line = f.readline()
+#        message = line.split(',')
+#        return message[0] == '1'
 
     def chemspeed_blocked(self) -> bool:
         """
@@ -129,10 +133,11 @@ class ChemspeedController:
         # send to file
         while self.chemspeed_blocked():
             time.sleep(0.1)
-        with open(self.cmd_file, 'w') as f:
+        write_csv([[1, command], [args_line, "end"]], file_name=self.cmd_file)
+        # with open(self.cmd_file, 'w') as f:
             # set new command to true, and the command name
-            f.write(f"1,{command}\n")
-            f.write(f'{args_line},end')
+        #    f.write(f"1,{command}\n")
+        #    f.write(f'{args_line},end')
 
         # stdout & logging
         self.logger.info(exec_message, extra={"continue_line": True})
@@ -397,12 +402,12 @@ class ChemspeedController:
             fd_amp,
             fd_num
         )
+        weights: list = read_csv(self.ret_file, single_line=True)
+        return [units.convert_mass(mass, dst="milli") for mass in weights[:-1]]
 
-        with open(self.ret_file, 'r') as f:
-            weights_str = f.readline().split(',')[:-1]
-        return [float(w) * 1e6 for w in weights_str]
-
-        # ATTN: Should anything that comes after the self.execute call (e.g. file reading) belong to self.execute?
+#        with open(self.ret_file, 'r') as f:
+#            weights_str = f.readline().split(',')[:-1]
+#        return [float(w) * 1e6 for w in weights_str]
 
     def transfer_solid_swile(
             self,
@@ -778,9 +783,12 @@ class ChemspeedController:
         zone = WellGroup(zone, well_configuration=self.wells)
         self.execute('measure_level', zone.get_zone_string())
 
-        with open(self.ret_file, 'r') as f:
-            levels_str = f.readline().split(',')[:-1]
-        return [float(level) for level in levels_str]
+        levels: str = read_csv(self.ret_file, single_line=True)
+        return [float(level) for level in levels[:-1]]
+
+#        with open(self.ret_file, 'r') as f:
+#            levels_str = f.readline().split(',')[:-1]
+#        return [float(level) for level in levels_str]
 
     def unmount_all(self):
         """Unmounting all equipment from the arm"""
@@ -803,21 +811,24 @@ class ChemspeedController:
             values: single float value of the key. dict if no key specified.
             units: cryostat, chiller in C; vacuum in mbar, vortex in rpm
         """
-        with open(self.sts_file, 'r') as f:
-            line = f.readline()[:-1]
-        values = list(map(float, line.split(',')))
-        convert = [
-            units.temp_k_to_c,
-            units.temp_k_to_c,
-            units.pressure_pa_to_mbar,
-            units.no_change,
-            units.temp_k_to_c,
-            units.no_change,
-        ]
-        types = ['temperature', 'reflux', 'vacuum', 'stir', 'box_temperature', 'box_humidity']
-        status = {t: c(v) for t, v, c in zip(types, values, convert)}
-        if key in types:
-            return status.get(key, None)
+        readout_data_units: dict = {
+            "temperature": units.temp_k_to_c,
+            "reflux": units.temp_k_to_c,
+            "vacuum": units.pressure_pa_to_mbar,
+            "stir": units.no_change,
+            "box_temperature": units.temp_k_to_c,
+            "box_humidity": units.no_change
+        }
+
+#        with open(self.sts_file, 'r') as f:
+#            line = f.readline()[:-1]
+
+        values: list = read_csv(self.sts_file, single_line=True)[:-1]
+
+        status: dict = {parameter: readout_data_units[parameter](float(value)) for parameter, value in zip(readout_data_units, values)}
+
+        if key in readout_data_units:
+            return status[key]
         else:
             return status
 
@@ -834,9 +845,7 @@ class ChemspeedController:
         Returns: None
         """
         self.logger.info(f"Waiting for {duration} seconds.")
-        if self.simulation:
-            return
-        else:
+        if not self.simulation:
             print('press "q" to cancel wait')
             while duration >= 0:
                 print("", end=f'\rWaiting for {duration} seconds.')
