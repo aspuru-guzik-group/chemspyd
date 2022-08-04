@@ -1,4 +1,5 @@
 from pathlib import Path
+from typing import List
 
 
 def read_csv(file_name: Path, single_line: bool = False, delimiter: str = ",") -> List:
