@@ -43,38 +43,58 @@ def inject_to_hplc(
         source: Zone,
         destination: Zone,
         volume: float,
+        needle: int = 0,
         src_flow: float = 10,
-        src_bu: float = 3,
+        src_bu: bool = True,
+        src_distance: float = 3,
         dst_flow: float = 0.5,
-        dst_bu: float = 0,
         rinse_volume: float = 2,
+        rinse_after_valve_switch: bool = True
 ) -> None:
-    """Inject liquid to the injection ports. This will use volume+0.1ml of liquid.
+    """
+    Inject liquid to the injection ports. This will use volume + 0.1ml of liquid.
 
-     Args (float for non specified type):
-        source (Zone): zone for transfer source
-        destination (Zone): zone for injection, can only be INJECT_I or INJECT_L
+    Args:
+        mgr: ChemspeedController object
+        source (Zone): Zone for transfer source
+        destination (Zone): Injection zone
         volume: volume to transfer (mL)
+        needle: Number of the needle to be used for injection.
         src_flow: draw speed at source (mL/min)
-        src_bu: needle bottoms up distance at source (mm)
-        dst_flow: draw speed at destination (mL/min)
-        dst_bu: needle bottoms up distance at destination (mm)
+        src_bu: True if liquid should be drawn bottom-up at the source.
+        src_distance: Needle bottom-up / top-down distance at source (mm)
+        dst_flow: Dispense speed at destination (mL/min)
         rinse_volume: needle rinsing volume after action (mL)
-        """
+        rinse_after_valve_switch: True if needle should only be rinsed after switching the HPLC valve.
+    """
     source = WellGroup(source, well_configuration=mgr.wells)
     destination = WellGroup(destination, well_configuration=mgr.wells, state="load")
+
+    if rinse_after_valve_switch:
+        rinse_volume_init: float = 0
+    else:
+        rinse_volume_init: float = rinse_volume
 
     mgr.transfer_liquid(
         source=source.get_zone_string(),
         destination=destination.get_zone_string(),
         volume=volume,
+        needle=needle,
         src_flow=src_flow,
         src_bu=src_bu,
+        src_distance=src_distance,
         dst_flow=dst_flow,
-        dst=dst_bu,
-        bu=True,
-        rinse_volume=rinse_volume
+        dst_bu=True,
+        rinse_volume=rinse_volume_init
     )
+
+    if rinse_after_valve_switch:
+        mgr.transfer_liquid(
+            source=mgr.system_liquids[str(needle)]["liquid_zone"],
+            destination=mgr.system_liquids[str(needle)]["waste_zone"],
+            volume=rinse_volume,
+            rinse_volume=rinse_volume
+        )
 
 
 def do_schlenk_cycles(

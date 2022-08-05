@@ -6,7 +6,6 @@ from deprecation import deprecated
 
 from chemspyd.utils.logging_utils import get_logger
 import chemspyd.utils.unit_conversions as units
-from chemspyd.defaults import *
 from chemspyd.utils import load_json, read_csv, write_csv
 from chemspyd.zones import Zone, WellGroup, initialize_zones
 
@@ -14,21 +13,18 @@ if os.name == 'nt':
     import msvcrt
 
 
-class ChemspeedController:
-    """Controller class for the Chemspeed platform.
-
-    Args:
-        cmd_folder: the folder path containing CSV files for communication with the platform.
-        stdout: disable commandline output messages.
-        logfile: log file path.
-        simulation: True to run the controller in simulation (only in python, not autosuite).
+class ChemspeedController(object):
+    """
+    Central Controller class for Python control of a ChemSpeed robotic platform.
+    High-level, public interface ChemsPyd package.
     """
 
+    # ATTN: API Broken compared to ChemsPyd 0.2!
     def __init__(
             self,
             cmd_folder: Union[str, Path],
-            element_config: Union[dict, None] = None,
-            system_liquids: Union[dict, None] = None,
+            element_config: Union[str, Path],
+            system_liquids: Union[str, Path],
             stdout: bool = True,
             logfile: Union[str, Path, None] = None,
             simulation: bool = False,
@@ -41,10 +37,13 @@ class ChemspeedController:
 
         Args:
             cmd_folder: Path to the folder containing the csv files for communicating with the instrument.
-            stdout: True if console output messages should be displayed.
+            element_config: Path to the .json file containing the configuration of the ChemspeedElements.
+            system_liquids: Path to the .json file containing the configuration of the pumps and system liquids.
+            stdout: True if logging output should be displayed on the console.
             logfile: Path to the log file. If None, no log file is written.
             simulation: True in order to run the Python controller (not Autosuite!) in simulation mode.
                         Will only print execution statements then (without sending any commands to the instrument).
+            track_quantities: True if vial volumes should be rigorously tracked.
 
         """
         self.cmd_file = Path(cmd_folder) / "command.csv"
@@ -56,12 +55,8 @@ class ChemspeedController:
 
         self.simulation = simulation
 
-        if not element_config:
-            element_config: dict = load_json(ELEMENTS)
-        if not system_liquids:
-            system_liquids = load_json(SYSTEM_LIQUIDS)
-        self.system_liquids: dict = system_liquids
-        self.elements, self.wells = initialize_zones(element_config, track_quantities)
+        self.system_liquids: dict = load_json(system_liquids)
+        self.elements, self.wells = initialize_zones(load_json(element_config), track_quantities)
 
 
     #############################
@@ -155,51 +150,55 @@ class ChemspeedController:
     # High Level Chemspeed Functions #
     ##################################
 
+    # ATTN: API Broken compared to ChemsPyd 0.2!
     def transfer_liquid(
             self,
             source: Zone,
             destination: Zone,
             volume: float,
-            src_flow: float = 10,
-            dst_flow: float = 10,
-            src_bu: float = 3,
-            dst: float = 0,
-            rinse_volume: float = 2,
             needle: int = 0,
+            src_flow: float = 10,
+            src_bu: bool = True,
+            src_distance: float = 3,
+            dst_flow: float = 10,
+            dst_bu: bool = False,
+            dst_distance: float = 0,
+            rinse_volume: float = 2,
+            rinse_stn: int = 1,
             airgap: float = 0.01,
             post_airgap: float = 0,
-            extra_volume: float = 0,
             airgap_dst: Zone = 'WASTE',
+            extra_volume: float = 0,
             extra_dst: Zone = 'WASTE',
             equib_src: float = 0,
             equib_dst: float = 0,
-            rinse_stn: int = 1,
             multiple_asp: bool = False,
-            bu: bool = False
     ):
-        """Transfer liquid in Chemspeed.
+        """
+        Executes a liquid transfer on the Chemspeed platform.
+        # ATTN: API Broken compared to ChemsPyd 0.2!
 
-        Args (float for non specified type):
-            source (str, list): zone for transfer source
-            destination (str, list): zone for destination of transfer
+        Args:
+            source: Source zone for the liquid transfer.
+            destination: Destination zone for the liquid transfer.
             volume: volume to transfer (0 mL <= volume <= 20 mL)
+            needle: Number of the needle to use (0 means all needles).
             src_flow: draw speed at source (0.05 mL/min <= src_flow <= 125 mL/min)
+            src_bu: True if liquid at source should be drawn bottom-up.
+            src_distance: Bottom-up / top-down distance at the source (mm).
             dst_flow: dispense speed at destination (0.05 mL/min <= src_flow <= 125 mL/min)
-            src_bu: needle bottoms up distance at source (mm)
-            dst: needle distance at destination (mm)
-            rinse_volume: needle rinsing volume after action (mL)
-            needle: the limited needle to use, 0 means select all, 12 means needles 1 and 2
-            airgap: airgap volume (mL)
-            post_airgap: post-airgap volume (mL)
-            extra_volume: extra volume (mL)
-            airgap_dst: destination zone for airgap (zone)
-            extra_dst: destination zone for extra volume (zone)
-            euqib_src: equilibration time when drawing from source (s)
-            equib_dst: equilibration time when dispensing to destination (s)
-            rinse_stn: rinse station corresponding to Waste 1 or Waste 2
-            multi_asp: whether multiple aspirations are allowed
-            bu: true if dst is bottom-up, false if
-
+            dst_bu: True if liquid at destination should be dispensed bottom-up.
+            dst_distance: Bottom-up / top-down distance at the destination (in mm).
+            rinse_volume: Needle rinsing volume after action (mL)
+            rinse_stn: Integer number of the rinse station (1 or 2).
+            airgap: Airgap volume (mL)
+            post_airgap: Post-airgap volume (mL)
+            airgap_dst: Destination zone for airgap
+            extra_volume: Extra volume (mL)
+            extra_dst: Destination zone for extra volume
+            equib_src: Equilibration time when drawing from source (s)
+            equib_dst: Equilibration time when dispensing to destination (s)
+            multiple_asp: True if multiple aspirations are allowed.
         """
         # Get different data types into uniform WellGroup data type
         source_wells: WellGroup = WellGroup(source, well_configuration=self.wells)
@@ -219,81 +218,24 @@ class ChemspeedController:
             source_wells.get_zone_string(),
             destination_wells.get_zone_string(),
             volume,
-            src_flow,
-            dst_flow,
-            src_bu,
-            dst,
-            rinse_volume,
             needle,
+            src_flow,
+            int(src_bu),
+            src_distance,
+            dst_flow,
+            int(dst_bu),
+            dst_distance,
+            rinse_volume,
+            rinse_stn,
             airgap,
             post_airgap,
-            extra_volume,
             airgap_dst,
+            extra_volume,
             extra_dst,
             equib_src,
             equib_dst,
-            rinse_stn,
-            int(multiple_asp),
-            int(bu)
+            int(multiple_asp)
         )
-
-    # def transfer_liquid_bu(
-    #     self,
-    #     source: Zones,
-    #     destination: Zones,
-    #     volume: float,
-    #     src_flow: float = 10,
-    #     dst_flow: float = 10,
-    #     src_bu: float = 3,
-    #     dst_bu: float = 0,
-    #     rinse_volume: float = 2,
-    #     needle: int = 0,
-    #     airgap: float = 0.01,
-    #     post_airgap: float = 0,
-    #     extra_volume: float = 0,
-    #     airgap_dst: Zones = 'WASTE',
-    #     extra_dst: Zones = 'WASTE',
-    #     equib_src: float = 0,
-    #     equib_dst: float = 0,
-    #     rinse_stn: int = 1,
-    #     multiple_aspirations: bool = False
-    # ):
-    #     """Transfer liquid in Chemspeed. Destination bottoms up version. Commonly used in injection valves.
-    #
-    #     Args (float for non specified type):
-    #         source (str, list): zone for transfer source
-    #         destination (str, list): zone for destination of transfer
-    #         volume: volume to transfer (mL)
-    #         src_flow: draw speed at source (mL/min)
-    #         dst_flow: dispense speed at destination (mL/min)
-    #         src_bu: needle bottoms up distance at source (mm)
-    #         dst_bu: needle bottoms up distance at destination (mm)
-    #         rinse_volume: needle rinsing volume after action (mL)
-    #         needle: the limited needle to use, 0 means select all
-    #     """
-    #     source = to_zone_string(source)
-    #     destination = to_zone_string(destination)
-    #     self.execute(
-    #         'transfer_liquid_bu',
-    #         source,
-    #         destination,
-    #         volume,
-    #         src_flow,
-    #         dst_flow,
-    #         src_bu,
-    #         dst_bu,
-    #         rinse_volume,
-    #         needle,
-    #         airgap,
-    #         post_airgap,
-    #         extra_volume,
-    #         airgap_dst,
-    #         extra_dst,
-    #         equib_src,
-    #         equib_dst,
-    #         rinse_stn,
-    #         int(multiple_aspirations)
-    #     )
 
     @deprecated(deprecated_in="1.0", removed_in="2.0",
                 details="Deprecated. Use transfer_liquid instead, or refer to the routines sub-package.")
@@ -306,6 +248,8 @@ class ChemspeedController:
                       dst_flow: float = 0.5,
                       dst_bu: float = 0,
                       rinse_volume: float = 2,
+                      needle: int = 0,
+
                       ):
         """Inject liquid to the injection ports. This will use volume+0.1ml of liquid.
 
@@ -319,24 +263,18 @@ class ChemspeedController:
             dst_bu: needle bottoms up distance at destination (mm)
             rinse_volume: needle rinsing volume after action (mL)
         """
-        # Get different data types into uniform WellGroup data type
-        source_wells: WellGroup = WellGroup(source, well_configuration=self.wells)
-        destination_wells: WellGroup = WellGroup(destination, well_configuration=self.wells)
-
-        # Update well states and information
-        source_wells.remove_material(quantity=volume)
-        destination_wells.add_material(quantity=volume)
-
-        self.execute(
-            'inject_liquid',
-            source_wells.get_zone_string(),
-            destination_wells.get_zone_string(),
-            volume,
-            src_flow,
-            src_bu,
-            dst_flow,
-            dst_bu,
-            rinse_volume,
+        self.transfer_liquid(
+            source=source,
+            destination=destination,
+            volume=volume,
+            needle=needle,
+            src_flow=src_flow,
+            src_bu=True,
+            src_distance=src_bu,
+            dst_flow=dst_flow,
+            dst_bu=True,
+            dst_distance=dst_bu,
+            rinse_volume=rinse_volume
         )
 
     def transfer_solid(
@@ -425,6 +363,9 @@ class ChemspeedController:
             # shake_angle=0.1,
             # shake_time=2
     ):
+    # TODO: Figure out what about the parameters shake_angle and shake_time
+    #       They are currently still expected in the Manager.app
+
         """Solid dispensing in Chemspeed (SWILE)
 
         Args (float for non specified type):
@@ -503,14 +444,7 @@ class ChemspeedController:
             state (str): cryostat state (on, off)
             temperature (float): temperature to set at when cryostat is on (C)
         """
-        self.elements["ISYNTH"].validate_parameter("reflux", state)
-        self.elements["ISYNTH"].validate_parameter("reflux_temperature", temperature)
-
-        self.execute(
-            'set_isynth_reflux',
-            state,
-            temperature
-        )
+        self.set_reflux("ISYNTH:1", state, temperature)
 
     def set_reflux(
             self,
@@ -521,16 +455,11 @@ class ChemspeedController:
         """
         Sets the reflux chilling temperature on a defined zone.
 
-        ATTN: Currently implemented in analogy to the set_stir method.
-                - the reflux_zone argument is not c
-
         Args:
-            reflux_zone: Zone to be refluxed (ISYNTH)
+            reflux_zone: Zone to be refluxed
             state: Cryostat state (on, off)
             temperature: Temperature (in °C) to set the cryostat to.
         """
-        raise NotImplementedError
-        # TODO: Implement the proper set_reflux function on the Manager.
         reflux_zone = WellGroup(reflux_zone, self.wells)
         reflux_zone.set_parameter("reflux", state)
         reflux_zone.set_parameter("reflux_temperature", temperature)
@@ -557,16 +486,7 @@ class ChemspeedController:
             temperature (float): temperature to set at when cryostat is on (C)
             ramp (float): ramping speed for the temperature (C/min)
         """
-        self.elements["ISYNTH"].validate_parameter("thermostat", state)
-        self.elements["ISYNTH"].validate_parameter("thermostat_temperature", temperature)
-        self.elements["ISYNTH"].validate_parameter("thermostat_ramp", ramp)
-
-        self.execute(
-            'set_isynth_temperature',
-            state,
-            temperature,
-            ramp
-        )
+        self.set_temperature("ISYNTH:1", state, temperature, ramp)
 
     def set_temperature(
             self,
@@ -583,10 +503,7 @@ class ChemspeedController:
             state: Cryostat state (on, off)
             temperature: Temperature (in °C) to set the cryostat to.
             ramp: Ramping speed for the temperature (in °C / min)
-
         """
-        raise NotImplementedError
-        # TODO: Implement the proper set_temperature function on the Manager.
         temp_zone = WellGroup(temp_zone, self.wells)
         temp_zone.set_parameter("thermostat", state)
         temp_zone.set_parameter("thermostat_temperature", temperature)
@@ -613,14 +530,7 @@ class ChemspeedController:
             state (str): vortex state (on, off)
             rpm (float): vortex rotation speed (rpm)
         """
-        self.elements["ISYNTH"].validate_parameter("stir", state)
-        self.elements["ISYNTH"].validate_parameter("stir_rate", rpm)
-
-        self.execute(
-            'set_isynth_stir',
-            state,
-            rpm
-        )
+        self.set_stir("ISYNTH:1", state, rpm)
 
     def set_stir(
             self,
@@ -661,14 +571,16 @@ class ChemspeedController:
             state (str): vacuum pump state (on, off)
             vacuum (float): vacuum pressure level (mbar)
         """
-        self.elements["ISYNTH"].validate_parameter("vacuum_pump", state)
-        self.elements["ISYNTH"].validate_parameter("vacuum_pump_pressure", vacuum)
+        self.set_vacuum("ISYNTH:1", state, vacuum)
 
-        self.execute(
-            'set_isynth_vacuum',
-            state,
-            vacuum
-        )
+#        self.elements["ISYNTH"].validate_parameter("vacuum_pump", state)
+#        self.elements["ISYNTH"].validate_parameter("vacuum_pump_pressure", vacuum)
+
+#        self.execute(
+#            'set_isynth_vacuum',
+#            state,
+#            vacuum
+#        )
 
     def set_vacuum(
             self,
@@ -684,8 +596,6 @@ class ChemspeedController:
             state: Vacuum pump state state (on, off)
             vacuum: Pressure to set the vacuum pump to.
         """
-        raise NotImplementedError
-        # TODO: Implement the proper set_vacuum function on the Manager.
         vac_zone = WellGroup(vac_zone, self.wells)
         vac_zone.set_parameter("vacuum_pump", state)
         vac_zone.set_parameter("vacuum_pump_pressure", vacuum)
@@ -741,6 +651,7 @@ class ChemspeedController:
             gripping_depth (float): gripping depth for the distance (down) to picking it up (mm)
         """
         # TODO: exclude crashing for certain zones
+        # ATTN: Function has never been tested properly on the Manager.app or even on the ChemSpeed!!!
         source = WellGroup(source, well_configuration=self.wells)
         destination = WellGroup(destination, well_configuration=self.wells)
         self.execute(
@@ -749,7 +660,7 @@ class ChemspeedController:
             destination.get_zone_string(),
             gripping_force,
             gripping_depth,
-            push_in
+            int(push_in)
         )
 
     def set_zone_state(
@@ -783,7 +694,7 @@ class ChemspeedController:
         zone = WellGroup(zone, well_configuration=self.wells)
         self.execute('measure_level', zone.get_zone_string())
 
-        levels: str = read_csv(self.ret_file, single_line=True)
+        levels: list = read_csv(self.ret_file, single_line=True)
         return [float(level) for level in levels[:-1]]
 
 #        with open(self.ret_file, 'r') as f:
@@ -860,3 +771,7 @@ class ChemspeedController:
                         break
 
         self.logger.info(f"Waiting for {duration} seconds completed.")
+
+    # TODO: Screwcapping is currently included as a method in the Manager.app
+    #       However, it is not really implemented there...
+    #       Do we want it? Do we need it?

@@ -1,10 +1,5 @@
-"""
-this file contains the functionality necessary for converting between units for chemspeed use
-"""
 from typing import Any, Union
 from scipy.constants import *
-# ATTN: Should we have an error for negative temp and pressure input values?
-#  or even a warning for 0 pressure?
 
 
 def temp_k_to_c(temp_kelvin: float) -> float:
@@ -46,7 +41,7 @@ def pressure_pa_to_mbar(pressure_pa: float) -> float:
 
 def convert_mass(mass: float, original: str = "kilo", dst: str = "milli") -> float:
     """
-    Converts a mass from one mass unit to another..
+    Converts a mass from one mass unit to another.
 
     Args:
         mass: Value of the mass
