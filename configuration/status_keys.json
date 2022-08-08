@@ -1,0 +1,32 @@
+{
+  "cryostat_temperature": {
+    "type": "temperature",
+    "source_unit": "K",
+    "target_unit": "C"
+  },
+  "reflux_temperature": {
+    "type": "temperature",
+    "source_unit": "K",
+    "target_unit": "C"
+  },
+  "vacuum_pump_pressure": {
+    "type": "pressure",
+    "unit": "Pa",
+    "target_unit": "mbar"
+  },
+  "stir_rate": {
+    "type": "float",
+    "source_unit": null,
+    "target_unit": null
+  },
+  "box_temperature": {
+    "type": "temperature",
+    "source_unit": "K",
+    "target_unit": "C"
+  },
+  "box_humidity": {
+    "type": "float",
+    "source_unit": null,
+    "target_unit": null
+  }
+}

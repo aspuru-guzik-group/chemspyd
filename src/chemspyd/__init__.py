@@ -1,3 +1,3 @@
-from .controller import ChemspeedController
+from .controller import Controller
 
-__all__ = ['ChemspeedController']
+__all__ = ['Controller']

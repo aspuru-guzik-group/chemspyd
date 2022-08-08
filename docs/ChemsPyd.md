@@ -14,8 +14,8 @@ chemspeed_controller.py
 # Usage
 - execute the Manager.app first.
 - please see test_example.py
-- you should be able to import ChemspeedController from pylab.instruments
-- initiate ChemspeedController() and run commands
+- you should be able to import Controller from pylab.instruments
+- initiate Controller() and run commands
 - use test_example.py for reference
 
 
@@ -26,18 +26,18 @@ chemspeed_controller.py
 - you will also need to install the correct conda enviroment
 - check PythonLab/packages/setup.py (probably not complete)
 - in your script:
-    - `from pylab.instruments import ChemspeedController`
+    - `from pylab.instruments import Controller`
 
 ## adding new paths through sys.path.append
 - python can add system paths on the fly
-- `import sys; sys.path.append('/your/path/to/folder/'); from chemspeed_controller import ChemspeedController`
+- `import sys; sys.path.append('/your/path/to/folder/'); from chemspeed_controller import Controller`
 - Note: you can split `;` above into new lines
 
 ## adding new paths permenantly through your system
 - you can add the path Dropbox/PythonLab/pylab/chemspeed_controller/ to system enviroment
     - windows and linux system have different methods off adding system variables, check online
 - in your script:
-    - `from pylab.instruments import ChemspeedController`
+    - `from pylab.instruments import Controller`
 
 
 Manager.app
@@ -78,7 +78,7 @@ Manager.app
     - you need create both zone (Zone) and zone_text (String)
     - in the csv, import as zone_text
     - use get_zone to convert zone_text to zone
-- Create a same class method in ChemspeedController, and define the argument and preprocess in the method
+- Create a same class method in Controller, and define the argument and preprocess in the method
     - in the execute, it is important to use the same command name for easy code management
     - remember to add doc strings
     - the order of the import in csv needs to be the same order in the python manager class method

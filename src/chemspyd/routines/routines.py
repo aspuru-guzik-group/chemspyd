@@ -1,14 +1,13 @@
 import time
 from typing import Union
 
-from chemspyd import ChemspeedController
+from chemspyd import Controller
 from chemspyd.zones import Zone, WellGroup
 from chemspyd.exceptions import ChemspydZoneError
-from chemspyd.utils.unit_conversions import hours_to_seconds
-
+from chemspyd.utils import UnitConverter
 
 def prime_pumps(
-        mgr: ChemspeedController,
+        mgr: Controller,
         pump: int,
         volume: Union[int, float]
 ) -> None:
@@ -39,7 +38,7 @@ def prime_pumps(
 
 
 def inject_to_hplc(
-        mgr: ChemspeedController,
+        mgr: Controller,
         source: Zone,
         destination: Zone,
         volume: float,
@@ -55,7 +54,7 @@ def inject_to_hplc(
     Inject liquid to the injection ports. This will use volume + 0.1ml of liquid.
 
     Args:
-        mgr: ChemspeedController object
+        mgr: Controller object
         source (Zone): Zone for transfer source
         destination (Zone): Injection zone
         volume: volume to transfer (mL)
@@ -98,7 +97,7 @@ def inject_to_hplc(
 
 
 def do_schlenk_cycles(
-        mgr: ChemspeedController,
+        mgr: Controller,
         wells: Zone,
         evac_time: int = 60,
         backfill_time: int = 30,
@@ -137,7 +136,7 @@ def do_schlenk_cycles(
 
 
 def heat_under_reflux(
-        mgr: ChemspeedController,
+        mgr: Controller,
         wells: Zone,
         stir_rate: float,
         temperature: float,
@@ -154,7 +153,7 @@ def heat_under_reflux(
           Maybe this should be taken into account somehow.
 
     Args:
-        mgr: ChemspeedController object.
+        mgr: Controller object.
         wells: Wells to be heated under reflux.
         stir_rate: Stir rate (in rpm).
         temperature: Heating temperature (in °C)
@@ -166,16 +165,16 @@ def heat_under_reflux(
     mgr.set_reflux(wells, state="on", temperature=condenser_temperature)
     mgr.set_temperature(wells, state="on", temperature=temperature, ramp=ramp)
     mgr.set_stir(wells, state="on", rpm=stir_rate)
-    mgr.wait(hours_to_seconds(heating_hours))
+    mgr.wait(UnitConverter()("time", heating_hours, "hour", "second"))
     mgr.set_temperature(wells, state="on", temperature=20, ramp=ramp)
-    mgr.wait(cooling_hours)
+    mgr.wait(UnitConverter()("time", cooling_hours, "hour", "second"))
     mgr.set_temperature(wells, state="off")
     mgr.set_reflux(wells, state="off")
     mgr.set_stir(wells, state="off")
 
 
 def filter_liquid(
-        mgr: ChemspeedController,
+        mgr: Controller,
         source_well: Zone,
         filtration_zone: Zone,
         filtration_volume: float,
@@ -190,7 +189,7 @@ def filter_liquid(
     Filters a liquid sample on a filtration rack. Allows for collecting the filtrate, washing and eluting the filter.
 
     Args:
-        mgr: ChemspeedController object.
+        mgr: Controller object.
         source_well: Source well of the sample to be filtered.
         filtration_zone: Zone on the filtration rack to be used. All "sub-zones" (SPE_D, SPE_C, SPE_W can be used).
         filtration_volume: Volume (in mL) of liquid to be filtered.

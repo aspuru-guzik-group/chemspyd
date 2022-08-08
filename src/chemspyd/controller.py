@@ -1,19 +1,16 @@
 from typing import Dict, List, Union, Optional
-import os
 from pathlib import Path
-import time
+from logging import Logger
 from deprecation import deprecated
 
+from .executor import ChemspeedExecutor
 from chemspyd.utils.logging_utils import get_logger
-import chemspyd.utils.unit_conversions as units
-from chemspyd.utils import load_json, read_csv, write_csv
+from chemspyd.utils import UnitConverter
+from chemspyd.utils import load_json
 from chemspyd.zones import Zone, WellGroup, initialize_zones
 
-if os.name == 'nt':
-    import msvcrt
 
-
-class ChemspeedController(object):
+class Controller(object):
     """
     Central Controller class for Python control of a ChemSpeed robotic platform.
     High-level, public interface ChemsPyd package.
@@ -25,20 +22,23 @@ class ChemspeedController(object):
             cmd_folder: Union[str, Path],
             element_config: Union[str, Path],
             system_liquids: Union[str, Path],
+            status_keys: Union[str, Path],
             stdout: bool = True,
             logfile: Optional[Union[str, Path]] = None,
             simulation: bool = False,
             track_quantities: bool = False
     ) -> None:
         """
-        Initializes the ChemspeedController by:
-            - setting up the paths to the communication files
+        Initializes the Controller by:
+            - instantiating the ChemspeedExecutor object, handling the communication with the AutoSuiteExecutor
             - establishing logging
+            - loading the instrument configuration
 
         Args:
             cmd_folder: Path to the folder containing the csv files for communicating with the instrument.
             element_config: Path to the .json file containing the configuration of the ChemspeedElements.
             system_liquids: Path to the .json file containing the configuration of the pumps and system liquids.
+            status_keys: Path to the .json file containing the configuration of the status file.
             stdout: True if logging output should be displayed on the console.
             logfile: Path to the log file. If None, no log file is written.
             simulation: True in order to run the Python controller (not Autosuite!) in simulation mode.
@@ -46,95 +46,13 @@ class ChemspeedController(object):
             track_quantities: True if vial volumes should be rigorously tracked.
 
         """
-        self.cmd_file = Path(cmd_folder) / "command.csv"
-        self.rsp_file = Path(cmd_folder) / "response.csv"
-        self.sts_file = Path(cmd_folder) / "status.csv"
-        self.ret_file = Path(cmd_folder) / "return.csv"
+        self.logger: Logger = get_logger(stdout, logfile)
 
-        self.logger = get_logger(stdout, logfile)
-
-        self.simulation = simulation
+        self.chemspeed: ChemspeedExecutor = ChemspeedExecutor(cmd_folder, self.logger, simulation)
 
         self.system_liquids: dict = load_json(system_liquids)
         self.elements, self.wells = initialize_zones(load_json(element_config), track_quantities, self.logger)
-
-
-    #############################
-    # Chemspeed Remote Statuses #
-    #############################
-
-    def _chemspeed_idle(self) -> bool:
-        """
-        Checks for the instrument to be idle.
-
-        Returns:
-            bool: True if the instrument is idle, else False.
-        """
-        rsp_readout: list = read_csv(self.rsp_file, single_line=True)
-        return rsp_readout[0] == "1"
-
-    def _chemspeed_newcmd(self) -> bool:
-        """
-        Checks if the instrument has received a new command.
-
-        Returns:
-            bool: True if it has received a new command, else False.
-        """
-        cmd_readout: list = read_csv(self.cmd_file, single_line=True)
-        return cmd_readout[0] == "1"
-
-    def chemspeed_blocked(self) -> bool:
-        """
-        Checks if the instrument is blocked, i.e.
-            - not idle
-            - has received a new command
-
-        Returns:
-            bool: True if the instrument is blocked, else False.
-        """
-        return not self._chemspeed_idle() or self._chemspeed_newcmd()
-
-    ###############################
-    # Low Level Command Execution #
-    ###############################
-
-    def execute(self, command: str, *args) -> None:
-        """
-        Main method to execute a given operation.
-        Writes the command into the command.csv file, including the command name and all required arguments.
-
-        Args:
-            command (str): The command name to be received in Chemspeed.
-            *args: List of arguments for the command.
-        """
-        args_line = ','.join([str(arg) for arg in args])
-        exec_message = f"Execute: {command}({args_line.replace(',', ', ')})"
-
-        # skip everything if simulation
-        if self.simulation:
-            self.logger.debug(exec_message)
-            return
-
-        # send to file
-        while self.chemspeed_blocked():
-            time.sleep(0.1)
-        write_csv([[1, command], [args_line, "end"]], file_name=self.cmd_file)
-        # with open(self.cmd_file, 'w') as f:
-            # set new command to true, and the command name
-        #    f.write(f"1,{command}\n")
-        #    f.write(f'{args_line},end')
-
-        # stdout & logging
-        self.logger.info(exec_message, extra={"continue_line": True})
-
-        # wait until no idle to confirm that the command was executed
-        while self._chemspeed_idle():
-            time.sleep(0.1)
-        self.logger.debug("-> started", extra={"format": False})
-
-        # self block, optional, or change to error detection
-        while self.chemspeed_blocked():
-            time.sleep(0.1)
+        self.status_keys: dict = load_json(status_keys)
 
     ##################################
     # High Level Chemspeed Functions #
@@ -166,7 +84,6 @@ class ChemspeedController(object):
     ):
         """
         Executes a liquid transfer on the Chemspeed platform.
-        # ATTN: API Broken compared to ChemsPyd 0.2!
 
         Args:
             source: Source zone for the liquid transfer.
@@ -199,11 +116,10 @@ class ChemspeedController(object):
         destination_wells.add_liquid(quantity=volume)
 
         # Get correct rinse station
-        # TODO: Figure out if this is the best way to handle the case of needle = 0  -> default rinse station
         if not needle == 0:
             rinse_stn = self.system_liquids[str(needle)]["rinse_station"]
 
-        self.execute(
+        self.chemspeed.execute(
             'transfer_liquid',
             source_wells.get_zone_string(),
             destination_wells.get_zone_string(),
@@ -313,7 +229,7 @@ class ChemspeedController(object):
         source_wells.remove_solid(quantity=weight)
         destination_wells.add_solid(quantity=0)
 
-        self.execute(
+        self.chemspeed.execute(
             'transfer_solid',
             source_wells.get_zone_string(),
             destination_wells.get_zone_string(),
@@ -330,8 +246,11 @@ class ChemspeedController(object):
             fd_amp,
             fd_num
         )
-        weights: list = read_csv(self.ret_file, single_line=True)
-        return [units.convert_mass(float(mass), dst="milli") for mass in weights[:-1]]
+
+        return [
+            UnitConverter()("mass", float(mass), source_unit="kilo", target_unit="milli")
+            for mass in self.chemspeed.return_data
+        ]
 
     def transfer_solid_swile(
             self,
@@ -420,7 +339,7 @@ class ChemspeedController(object):
         zone.set_parameter("drawer", state)
         zone.set_parameter("environment", environment)
 
-        self.execute(
+        self.chemspeed.execute(
             'set_drawer',
             zone.get_zone_string(),
             state,
@@ -460,7 +379,7 @@ class ChemspeedController(object):
         reflux_zone.set_parameter("reflux", state)
         reflux_zone.set_parameter("reflux_temperature", temperature)
 
-        self.execute(
+        self.chemspeed.execute(
             "set_reflux",
             reflux_zone.get_element_string(),
             state,
@@ -505,7 +424,7 @@ class ChemspeedController(object):
         temp_zone.set_parameter("thermostat_temperature", temperature)
         temp_zone.set_parameter("thermostat_ramp", ramp)
 
-        self.execute(
+        self.chemspeed.execute(
             "set_temperature",
             temp_zone.get_zone_string(),
             state,
@@ -547,7 +466,7 @@ class ChemspeedController(object):
         stir_zone.set_parameter("stir_rate", rpm)
 
         self.unmount_all()
-        self.execute(
+        self.chemspeed.execute(
             'set_stir',
             stir_zone.get_element_string(),
             state,
@@ -586,7 +505,7 @@ class ChemspeedController(object):
         vac_zone = WellGroup(vac_zone, self.wells, logger=self.logger)
         vac_zone.set_parameter("vacuum_pump", state)
         vac_zone.set_parameter("vacuum_pump_pressure", vacuum)
-        self.execute(
+        self.chemspeed.execute(
             "set_vacuum",
             vac_zone.get_element_string(),
             state,
@@ -665,7 +584,7 @@ class ChemspeedController(object):
             state (bool): Enable or disable (True, False)
         """
         zone = WellGroup(zone, well_configuration=self.wells, logger=self.logger)
-        self.execute(
+        self.chemspeed.execute(
             'set_zone_state',
             zone.get_zone_string(),
             int(state)
@@ -681,18 +600,16 @@ class ChemspeedController(object):
             zone (Zone): zones to measure
         """
         zone = WellGroup(zone, well_configuration=self.wells, logger=self.logger)
-        self.execute('measure_level', zone.get_zone_string())
-
-        levels: list = read_csv(self.ret_file, single_line=True)
-        return [float(level) for level in levels[:-1]]
+        self.chemspeed.execute('measure_level', zone.get_zone_string())
+        return [float(level) for level in self.chemspeed.return_data]
 
     def unmount_all(self):
         """Unmounting all equipment from the arm"""
-        self.execute('unmount_all')
+        self.chemspeed.execute('unmount_all')
 
     def stop_manager(self):
         """Stopping the manager safely from the python controller"""
-        self.execute('stop_manager')
+        self.chemspeed.execute('stop_manager')
 
     def read_status(
             self,
@@ -701,59 +618,42 @@ class ChemspeedController(object):
         """Reading the Chemspeed status during idle.
 
         Args:
-            key (None, str): status to read ['temperature', 'reflux', 'vacuum', 'stir', 'box_temperature']
+            key (None, str): Status to read (from the specified keys in self.status_keys)
 
         Returns:
             values: single float value of the key. dict if no key specified.
             units: cryostat, chiller in C; vacuum in mbar, vortex in rpm
         """
-        readout_data_units: dict = {
-            "temperature": units.temp_k_to_c,
-            "reflux": units.temp_k_to_c,
-            "vacuum": units.pressure_pa_to_mbar,
-            "stir": units.no_change,
-            "box_temperature": units.temp_k_to_c,
-            "box_humidity": units.no_change
-        }
+        status: dict = {}
 
-        values: list = read_csv(self.sts_file, single_line=True)[:-1]
+        for parameter, status_value in zip(self.status_keys, self.chemspeed.status):
+            value: float = UnitConverter()(
+                parameter_type=parameter,
+                value=float(status_value),
+                source_unit=self.status_keys[parameter]["source_unit"],
+                target_unit=self.status_keys[parameter]["target_unit"]
+            )
+            status[parameter] = value
 
-        status: dict = {parameter: readout_data_units[parameter](float(value)) for parameter, value in zip(readout_data_units, values)}
-
-        if key in readout_data_units:
+        if key in status:
             return status[key]
         else:
             return status
 
     def wait(
             self,
-            duration: int
+            duration: Union[int, float],
+            cancel_wait: bool = True
     ) -> None:
         """
-        waits for a set duration
-        can be cancelled by hitting q
+        Waits for a set duration of time by calling the "wait" method of AutoSuite.
+
         Args:
-            duration: duration of wait (in seconds)
-
-        Returns: None
+            duration: Duration of wait (in seconds)
+            cancel_wait: True if a cancel_wait button should be usable on the AutoSuite interface.
         """
-        self.logger.info(f"Waiting for {duration} seconds.")
-        if not self.simulation:
-            print('press "q" to cancel wait')
-            while duration >= 0:
-                print("", end=f'\rWaiting for {duration} seconds.')
-                time.sleep(1)
-                duration -= 1
-                if os.name == 'nt':
-                    # FIXME: Temporarily putting a type ignore here. Should fix to also allow
-                    #  catching keyboard input from other OSs.
-                    # FIXME: Should this be a global variable function that is set / imported with the OS?
-                    if msvcrt.kbhit() and msvcrt.getwch() == 'q':  # type: ignore[attr-defined]
-                        self.logger.info("Wait cancelled.")
-                        break
-
-        self.logger.info(f"Waiting for {duration} seconds completed.")
-
-    # TODO: Screwcapping is currently included as a method in the Manager.app
-    #       However, it is not really implemented there...
-    #       Do we want it? Do we need it?
+        self.chemspeed.execute(
+            "wait",
+            duration,
+            int(cancel_wait)
+        )

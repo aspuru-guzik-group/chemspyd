@@ -30,8 +30,6 @@ class Well(object):
         self._state: str = "default"
         self._logger = logger
 
-        # TODO: include tracking of further states and properties in addition to quantity?
-
     @property
     def state(self) -> str:
         return self._state
