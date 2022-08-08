@@ -1,6 +1,7 @@
-from typing import Union
+from typing import Union, Optional
+from logging import Logger
 
-from ..exceptions import ChemspeedConfigurationError, ChemspeedValueError
+from ..exceptions import *
 
 
 class ChemspeedElement(object):
@@ -24,7 +25,12 @@ class ChemspeedElement(object):
         "states"
     }
 
-    def __init__(self, name: str, properties: dict) -> None:
+    def __init__(
+            self,
+            name: str,
+            properties: dict,
+            logger: Optional[Logger] = None
+    ) -> None:
         """
         Instantiates the ChemspeedElement object by setting all properties as attributes.
 
@@ -32,16 +38,19 @@ class ChemspeedElement(object):
             name: Name of the element (must match the zone name in the Manager app).
             properties: Dictionary of all specific properties of the element. Must contain the keys specified in the
                         class variable _required_keys.
+            logger (optional): Logger object
 
         Raises:
             ChemspeedConfigurationError: if any of the required keys are missing.
         """
         self.name = name
+        self.logger = logger
 
         if not self._required_keys.issubset(properties):
-            raise ChemspeedConfigurationError(
+            raise ChemspydPropertyError(
                 f"Configuration of {name} failed. "
-                f"Missing keys {self._required_keys - properties.keys()} for element {name}."
+                f"Missing keys {self._required_keys - properties.keys()} for element {name}.",
+                logger=self.logger
             )
 
         for key in properties:
@@ -50,7 +59,11 @@ class ChemspeedElement(object):
     def __str__(self) -> str:
         return self.name
 
-    def validate_parameter(self, parameter_name: str, parameter_value: Union[int, float, str, bool]) -> None:
+    def validate_parameter(
+            self,
+            parameter_name: str,
+            parameter_value: Union[int, float, str, bool]
+    ) -> None:
         """
         Validates a specific setting / target status (e.g. temperature, stir rate, ...) that the element should be
         set to.
@@ -74,10 +87,16 @@ class ChemspeedElement(object):
             validation_methods[type(parameter_value)](parameter_name, parameter_value)
 
         except (KeyError, AttributeError, TypeError):
-            raise ChemspeedConfigurationError(
-                f"The parameter {parameter_name} cannot be set for {self.name}")
+            raise ChemspydElementError(
+                f"The parameter {parameter_name} cannot be set for {self.name}",
+                logger=self.logger
+            )
 
-    def _validate_continuous_parameter(self, parameter_name: str, parameter_value: Union[int, float]) -> None:
+    def _validate_continuous_parameter(
+            self,
+            parameter_name: str,
+            parameter_value: Union[int, float]
+    ) -> None:
         """
         Validates if a continuous parameter is in the specified boundaries,
         given as [lower, upper] in the configuration.
@@ -89,11 +108,16 @@ class ChemspeedElement(object):
         boundaries: list = getattr(self, parameter_name)
 
         if not boundaries[0] <= parameter_value <= boundaries[1]:
-            raise ChemspeedValueError(
-                f"The set value of {parameter_name} ({parameter_value}) exceeds the limit of {self.name}."
+            raise ChemspydRangeError(
+                f"The set value of {parameter_name} ({parameter_value}) exceeds the limit of {self.name}.",
+                logger=self.logger
             )
 
-    def _validate_discrete_parameter(self, parameter_name: str, parameter_value: Union[str, bool]) -> None:
+    def _validate_discrete_parameter(
+            self,
+            parameter_name: str,
+            parameter_value: Union[str, bool]
+    ) -> None:
         """
         Validates if a discrete parameter is in the specified set of options.
 
@@ -104,6 +128,7 @@ class ChemspeedElement(object):
         options: list = getattr(self, parameter_name)
 
         if parameter_value not in options:
-            raise ChemspeedValueError(
-                f"The set value of {parameter_name} ({parameter_value}) is not a feasible option for {self.name}."
+            raise ChemspydRangeError(
+                f"The set value of {parameter_name} ({parameter_value}) is not a feasible option for {self.name}.",
+                logger=self.logger
             )

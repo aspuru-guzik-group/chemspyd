@@ -1,4 +1,4 @@
-from typing import Dict, List, Union
+from typing import Dict, List, Union, Optional
 import os
 from pathlib import Path
 import time
@@ -26,7 +26,7 @@ class ChemspeedController(object):
             element_config: Union[str, Path],
             system_liquids: Union[str, Path],
             stdout: bool = True,
-            logfile: Union[str, Path, None] = None,
+            logfile: Optional[str, Path] = None,
             simulation: bool = False,
             track_quantities: bool = False
     ) -> None:
@@ -56,7 +56,7 @@ class ChemspeedController(object):
         self.simulation = simulation
 
         self.system_liquids: dict = load_json(system_liquids)
-        self.elements, self.wells = initialize_zones(load_json(element_config), track_quantities)
+        self.elements, self.wells = initialize_zones(load_json(element_config), track_quantities, self.logger)
 
 
     #############################
@@ -201,8 +201,8 @@ class ChemspeedController(object):
             multiple_asp: True if multiple aspirations are allowed.
         """
         # Get different data types into uniform WellGroup data type
-        source_wells: WellGroup = WellGroup(source, well_configuration=self.wells)
-        destination_wells: WellGroup = WellGroup(destination, well_configuration=self.wells)
+        source_wells: WellGroup = WellGroup(source, well_configuration=self.wells, logger=self.logger)
+        destination_wells: WellGroup = WellGroup(destination, well_configuration=self.wells, logger=self.logger)
 
         # Update well states and information
         source_wells.remove_material(quantity=volume)
@@ -316,8 +316,8 @@ class ChemspeedController(object):
             weights (list of float): real dispense weights (mg)
         """
         # Get different data types into uniform WellGroup data type
-        source_wells: WellGroup = WellGroup(source, well_configuration=self.wells)
-        destination_wells: WellGroup = WellGroup(destination, well_configuration=self.wells)
+        source_wells: WellGroup = WellGroup(source, well_configuration=self.wells, logger=self.logger)
+        destination_wells: WellGroup = WellGroup(destination, well_configuration=self.wells, logger=self.logger)
 
         # Update well states and information
         source_wells.remove_material(quantity=weight)
@@ -384,8 +384,8 @@ class ChemspeedController(object):
             shake_time: source vial shaking time (s)
         """
         # Get different data types into uniform WellGroup data type
-        source_wells: WellGroup = WellGroup(source, well_configuration=self.wells)
-        destination_wells: WellGroup = WellGroup(destination, well_configuration=self.wells)
+        source_wells: WellGroup = WellGroup(source, well_configuration=self.wells, logger=self.logger)
+        destination_wells: WellGroup = WellGroup(destination, well_configuration=self.wells, logger=self.logger)
 
         # Update well states and information
         source_wells.remove_material(quantity=weight)
@@ -409,7 +409,8 @@ class ChemspeedController(object):
     def set_drawer(
             self,
             zone: Zone,
-            state: str, environment: str = 'none'
+            state: str,
+            environment: str = 'none'
     ):
         """
         Setting ISYNTH drawer position. For accessing the vials in ISYNTH.
@@ -420,7 +421,7 @@ class ChemspeedController(object):
             state (str): drawer open state (open, close)
             environment (str): environment state the zone will be in (inert, vacuum, none)
         """
-        zone = WellGroup(zone, well_configuration=self.wells)
+        zone = WellGroup(zone, well_configuration=self.wells, logger=self.logger)
         zone.set_parameter("drawer", state)
         zone.set_parameter("environment", environment)
 
@@ -460,7 +461,7 @@ class ChemspeedController(object):
             state: Cryostat state (on, off)
             temperature: Temperature (in °C) to set the cryostat to.
         """
-        reflux_zone = WellGroup(reflux_zone, self.wells)
+        reflux_zone = WellGroup(reflux_zone, self.wells, logger=self.logger)
         reflux_zone.set_parameter("reflux", state)
         reflux_zone.set_parameter("reflux_temperature", temperature)
 
@@ -504,7 +505,7 @@ class ChemspeedController(object):
             temperature: Temperature (in °C) to set the cryostat to.
             ramp: Ramping speed for the temperature (in °C / min)
         """
-        temp_zone = WellGroup(temp_zone, self.wells)
+        temp_zone = WellGroup(temp_zone, self.wells, logger=self.logger)
         temp_zone.set_parameter("thermostat", state)
         temp_zone.set_parameter("thermostat_temperature", temperature)
         temp_zone.set_parameter("thermostat_ramp", ramp)
@@ -546,7 +547,7 @@ class ChemspeedController(object):
             state (str): stir state (on, off)
             rpm (float): stir rotation speed (rpm)
         """
-        stir_zone = WellGroup(stir_zone, self.wells)
+        stir_zone = WellGroup(stir_zone, self.wells, logger=self.logger)
         stir_zone.set_parameter("stir", state)
         stir_zone.set_parameter("stir_rate", rpm)
 
@@ -596,7 +597,7 @@ class ChemspeedController(object):
             state: Vacuum pump state state (on, off)
             vacuum: Pressure to set the vacuum pump to.
         """
-        vac_zone = WellGroup(vac_zone, self.wells)
+        vac_zone = WellGroup(vac_zone, self.wells, logger=self.logger)
         vac_zone.set_parameter("vacuum_pump", state)
         vac_zone.set_parameter("vacuum_pump_pressure", vacuum)
         self.execute(
@@ -610,7 +611,7 @@ class ChemspeedController(object):
                 details="ISYNTH-specific methods will be deprecated. Use operation-specific methods instead.")
     def set_isynth(
             self,
-            **kwargs: Union[None, str, float]
+            **kwargs: Optional[str, float]
     ) -> None:
         """Setting ISYNTH values. The following values can be [None, str, float]. If set at None, no change to current state.
         If "off" then turns off. If set to a value, then the system will turn on and set to that value.
@@ -652,8 +653,8 @@ class ChemspeedController(object):
         """
         # TODO: exclude crashing for certain zones
         # ATTN: Function has never been tested properly on the Manager.app or even on the ChemSpeed!!!
-        source = WellGroup(source, well_configuration=self.wells)
-        destination = WellGroup(destination, well_configuration=self.wells)
+        source = WellGroup(source, well_configuration=self.wells, logger=self.logger)
+        destination = WellGroup(destination, well_configuration=self.wells, logger=self.logger)
         self.execute(
             'vial_transport',
             source.get_zone_string(),
@@ -675,7 +676,7 @@ class ChemspeedController(object):
             zone (str, list): zones to change the state
             state (bool): Enable or disable (True, False)
         """
-        zone = WellGroup(zone, well_configuration=self.wells)
+        zone = WellGroup(zone, well_configuration=self.wells, logger=self.logger)
         self.execute(
             'set_zone_state',
             zone.get_zone_string(),
@@ -691,7 +692,7 @@ class ChemspeedController(object):
         Args:
             zone (Zone): zones to measure
         """
-        zone = WellGroup(zone, well_configuration=self.wells)
+        zone = WellGroup(zone, well_configuration=self.wells, logger=self.logger)
         self.execute('measure_level', zone.get_zone_string())
 
         levels: list = read_csv(self.ret_file, single_line=True)
@@ -711,7 +712,7 @@ class ChemspeedController(object):
 
     def read_status(
             self,
-            key: Union[None, str] = None
+            key: Optional[str] = None
     ) -> Union[Dict[str, float], float]:
         """Reading the Chemspeed status during idle.
 
