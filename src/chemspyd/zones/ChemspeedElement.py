@@ -12,10 +12,12 @@ class ChemspeedElement(object):
 
     _required_keys: set = {
         "no_wells",
-        "max_quantity",
+        "max_volume",
         "default_quantity",
-        "addable",
-        "removable",
+        "addable_liquid",
+        "removable_liquid",
+        "addable_solid",
+        "removable_solid",
         "thermostat",
         "stir",
         "reflux",

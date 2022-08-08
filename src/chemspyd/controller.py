@@ -195,8 +195,8 @@ class ChemspeedController(object):
         destination_wells: WellGroup = WellGroup(destination, well_configuration=self.wells, logger=self.logger)
 
         # Update well states and information
-        source_wells.remove_material(quantity=volume)
-        destination_wells.add_material(quantity=volume)
+        source_wells.remove_liquid(quantity=volume)
+        destination_wells.add_liquid(quantity=volume)
 
         # Get correct rinse station
         # TODO: Figure out if this is the best way to handle the case of needle = 0  -> default rinse station
@@ -310,8 +310,8 @@ class ChemspeedController(object):
         destination_wells: WellGroup = WellGroup(destination, well_configuration=self.wells, logger=self.logger)
 
         # Update well states and information
-        source_wells.remove_material(quantity=weight)
-        destination_wells.add_material(quantity=0)
+        source_wells.remove_solid(quantity=weight)
+        destination_wells.add_solid(quantity=0)
 
         self.execute(
             'transfer_solid',
@@ -381,8 +381,8 @@ class ChemspeedController(object):
         destination_wells: WellGroup = WellGroup(destination, well_configuration=self.wells, logger=self.logger)
 
         # Update well states and information
-        source_wells.remove_material(quantity=weight)
-        destination_wells.add_material(quantity=0)
+        source_wells.remove_solid(quantity=weight)
+        destination_wells.add_solid(quantity=0)
 
         self.execute(
             'transfer_solid_swile',

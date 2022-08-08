@@ -26,12 +26,11 @@ class Well(object):
         self.index: int = index
         self._track_quantities: bool = False if track_quantities is False or element.default_quantity is None else True
         self._quantity: Optional[float] = element.default_quantity if self._track_quantities else None
+        self.clean: bool = True if self._quantity == 0 else False
         self._state: str = "default"
-        self.logger = logger
+        self._logger = logger
 
-        # TODO: Include 'clean' / 'available' property
         # TODO: include tracking of further states and properties in addition to quantity?
-        # TODO: separate solid / liquid dispensing and tracking, include addable_solid / addable_liquid parameter
 
     @property
     def state(self) -> str:
@@ -54,7 +53,7 @@ class Well(object):
         if state not in self.element.states:
             raise ChemspydElementError(
                 f"Setting {self} to {state} failed. The element {self.element} cannot be set to {state}.",
-                logger=self.logger
+                logger=self._logger
             )
         self._state = state
 
@@ -68,13 +67,14 @@ class Well(object):
             quantity: float
     ) -> None:
         """
-        Sets the materials quantity value by calling the add_material method (allows for advanced exception handling).
+        Sets the materials quantity value.
 
         Args:
             quantity: Quantity (mg for solids, mL for liquids) of material to be added to the well.
         """
-        self._quantity = 0
-        self.add_material(quantity)
+        if quantity > 0:
+            self.clean = False
+        self._quantity = quantity
 
     def __str__(self) -> str:
         """
@@ -96,7 +96,7 @@ class Well(object):
         self.state = state
         return self
 
-    def add_material(
+    def add_liquid(
             self,
             quantity: float
     ) -> None:
@@ -104,33 +104,34 @@ class Well(object):
         Updates the current material quantity in the vial by adding quantity to self._quantity.
 
         Args:
-            quantity: Quantity (mg for solids, mL for liquids) of material to be added to the well.
+            quantity: Quantity (mL) of material to be added to the well.
 
         Raises:
-            ChemspeedValueError: if vial is empty or maximum volume is exceeded
+            ChemspydElementError: if the well does not allow for adding liquid
+            ChemspydQuantityError: if the well content would exceed the max. content or would be be lower than 0
         """
-        if quantity >= 0 and not self.element.addable:
+        if quantity >= 0 and not self.element.addable_liquid:
             raise ChemspydElementError(
-                f"Dispense to {self} failed. Addition of material to element {self.element} is not allowed.",
-                logger=self.logger
+                f"Dispense to {self} failed. Addition of liquid to element {self.element} is not allowed.",
+                logger=self._logger
             )
 
-        if self._track_quantities:
-            if self._quantity + quantity > self.element.max_quantity:
+        if self._track_quantities and self.element.max_volume:
+            if self._quantity + quantity > self.element.max_volume:
                 raise ChemspydQuantityError(
-                    f"Dispense to {self} failed. The maximum quantity will be exceeded.",
-                    logger=self.logger
+                    f"Dispense to {self} failed. The maximum volume will be exceeded.",
+                    logger=self._logger
                 )
 
             elif self._quantity + quantity < 0:
                 raise ChemspydQuantityError(
-                    f"Dispense to {self} failed. The well will be empty.",
-                    logger=self.logger
+                    f"Dispense from {self} failed. The well will be empty.",
+                    logger=self._logger
                 )
 
-            self._quantity += quantity
+            self.quantity = self.quantity + quantity
 
-    def remove_material(
+    def remove_liquid(
             self,
             quantity: float
     ) -> None:
@@ -140,14 +141,65 @@ class Well(object):
 
         Args:
             quantity: Quantity of material (mg for solids, mL for liquids) to be removed.
+
+        Raises:
+            ChemspydElementError: if the well does not allow for removing liquid
         """
-        if not self.element.removable:
+        if not self.element.removable_liquid:
             raise ChemspydElementError(
-                f"Dispense from {self} failed. Removing of material from element {self.element} is not allowed.",
-                logger=self.logger
+                f"Dispense from {self} failed. Removing of liquid from element {self.element} is not allowed.",
+                logger=self._logger
             )
 
-        return self.add_material(-quantity)
+        return self.add_liquid(-quantity)
+
+    def add_solid(
+            self,
+            quantity: float
+    ):
+        """
+        Checks if solid can be added to a given well.
+
+        Args:
+            quantity: Quantity (mg) of solid material to be added to the well.
+
+        Raises:
+            ChemspydElementError: if addition to well is not allowed.
+        """
+        if quantity >= 0 and not self.element.addable_solid:
+            raise ChemspydElementError(
+                f"Dispense to {self} failed. Addition of solid to element {self.element} is not allowed.",
+                logger=self._logger
+            )
+
+    def remove_solid(
+            self,
+            quantity: float
+    ):
+        """
+        Updates the current solid material quantity in the well by subtracting the quantity from self._quantity.
+
+        Args:
+            quantity: Quantity (mg) of material to be removed from the well.
+
+        Raises:
+            ChemspydElementError: if solid cannot be dispensed from the given well
+            ChemspydQuantityError: if the dispense quantity exceeds the well content.
+        """
+        if not self.element.removable_solid:
+            raise ChemspydElementError(
+                f"Dispense from {self} failed. Removing of solid from element {self.element} is not allowed.",
+                logger=self._logger
+            )
+
+        if self._track_quantities:
+            if self._quantity - quantity < 0:
+                raise ChemspydQuantityError(
+                    f"Dispense from {self} failed. The well will be empty.",
+                    logger=self._logger
+                )
+
+            self.quantity = self.quantity - quantity
 
     def validate_parameter(
             self,

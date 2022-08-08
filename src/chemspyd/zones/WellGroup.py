@@ -106,33 +106,61 @@ class WellGroup(object):
         for well in self._all_wells:
             well.validate_parameter(parameter_name, parameter_value)
 
-    def add_material(
+    def add_liquid(
             self,
             quantity: float
     ) -> None:
         """
-        Public method to be called when adding material to each well of the WellGroup.
+        Public method to be called when adding liquid material to each well of the WellGroup.
         Validates the operation (viable addable quantity) and updates the material quantity of the well.
 
         Args:
             quantity: Quantity to be added to the well (in mL).
         """
         for well in self._all_wells:
-            well.add_material(quantity)
+            well.add_liquid(quantity)
 
-    def remove_material(
+    def remove_liquid(
             self,
             quantity: float
     ) -> None:
         """
-        Public method to be called when removing material from each well of the WellGroup.
+        Public method to be called when removing liquid material from each well of the WellGroup.
         Validates the operation (viable removable quantity) and updates the material quantity of the well.
 
         Args:
-            quantity: Quantity to be added to the well (solids: in mg, liquids: in mL).
+            quantity: Quantity to be added to the well (in mL).
         """
         for well in self._all_wells:
-            well.remove_material(quantity)
+            well.remove_liquid(quantity)
+
+    def add_solid(
+            self,
+            quantity: float
+    ) -> None:
+        """
+        Public method to be called when adding solid material to each well of the WellGroup.
+        Validates the operation (viable addable quantity) and updates the material quantity of the well.
+
+        Args:
+            quantity: Quantity to be added to the well (in mg).
+        """
+        for well in self._all_wells:
+            well.add_solid(quantity)
+
+    def remove_solid(
+            self,
+            quantity: float
+    ) -> None:
+        """
+        Public method to be called when removing solid material from each well of the WellGroup.
+        Validates the operation (viable removable quantity) and updates the material quantity of the well.
+
+        Args:
+            quantity: Quantity to be added to the well (in mg).
+        """
+        for well in self._all_wells:
+            well.remove_solid(quantity)
 
     def get_zone_string(self) -> str:
         """
