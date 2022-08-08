@@ -642,18 +642,15 @@ class Controller(object):
 
     def wait(
             self,
-            duration: Union[int, float],
-            cancel_wait: bool = True
+            duration: Union[int, float]
     ) -> None:
         """
         Waits for a set duration of time by calling the "wait" method of AutoSuite.
 
         Args:
             duration: Duration of wait (in seconds)
-            cancel_wait: True if a cancel_wait button should be usable on the AutoSuite interface.
         """
         self.chemspeed.execute(
             "wait",
-            duration,
-            int(cancel_wait)
+            duration
         )
