@@ -18,9 +18,9 @@ def read_csv(file_name: Path, single_line: bool = False, delimiter: str = ",") -
         lines: list = input_file.readlines()
 
     if single_line:
-        return lines[0].split(sep=delimiter)
+        return lines[0].strip().split(sep=delimiter)
     else:
-        return [line.split(sep=delimiter) for line in lines]
+        return [line.strip().split(sep=delimiter) for line in lines]
 
 
 def write_csv(lines: list, file_name: Path, single_line: bool = False, delimiter: str = ",") -> None:
@@ -38,4 +38,5 @@ def write_csv(lines: list, file_name: Path, single_line: bool = False, delimiter
 
     with open(file_name, "w") as output_file:
         for line in lines:
+            line = [str(entry) for entry in line]
             output_file.write(f"{delimiter.join(line)}\n")

@@ -3,7 +3,7 @@ from typing import Union
 
 from chemspyd import ChemspeedController
 from chemspyd.zones import Zone, WellGroup
-from chemspyd.exceptions import ChemspeedConfigurationError
+from chemspyd.exceptions import ChemspydZoneError
 from chemspyd.utils.unit_conversions import hours_to_seconds
 
 
@@ -27,7 +27,7 @@ def prime_pumps(
         src = mgr.system_liquids[str(pump)]["liquid_zone"]
         dst = mgr.system_liquids[str(pump)]["waste_zone"]
     except KeyError:
-        raise ChemspeedConfigurationError("The specified zone does not exist.")
+        raise ChemspydZoneError("The specified zone does not exist.")
 
     mgr.transfer_liquid(
         source=src,

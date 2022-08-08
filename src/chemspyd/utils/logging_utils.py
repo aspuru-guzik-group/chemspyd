@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Optional, Union
 from pathlib import Path
 import logging
 
@@ -28,7 +28,7 @@ class ConsoleStreamHandler(logging.Handler):
         print(message, end=terminate, flush=True)
 
 
-def get_logger(stdout: bool = True, logfile: Optional[str, Path] = None):
+def get_logger(stdout: bool = True, logfile: Optional[Union[str, Path]] = None):
     """
     Creates a logging.Logger object that handles logging for all ChemSpeed operations.
 

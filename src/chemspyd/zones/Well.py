@@ -29,8 +29,9 @@ class Well(object):
         self._state: str = "default"
         self.logger = logger
 
-        # TODO: Include 'clean' property
+        # TODO: Include 'clean' / 'available' property
         # TODO: include tracking of further states and properties in addition to quantity?
+        # TODO: separate solid / liquid dispensing and tracking, include addable_solid / addable_liquid parameter
 
     @property
     def state(self) -> str:

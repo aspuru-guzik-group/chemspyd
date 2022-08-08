@@ -26,7 +26,7 @@ class ChemspeedController(object):
             element_config: Union[str, Path],
             system_liquids: Union[str, Path],
             stdout: bool = True,
-            logfile: Optional[str, Path] = None,
+            logfile: Optional[Union[str, Path]] = None,
             simulation: bool = False,
             track_quantities: bool = False
     ) -> None:
@@ -73,11 +73,6 @@ class ChemspeedController(object):
         rsp_readout: list = read_csv(self.rsp_file, single_line=True)
         return rsp_readout[0] == "1"
 
-#         with open(self.rsp_file, 'r') as f:
-#            line = f.readline()
-#        message = line.split(',')
-#        return message[0] == '1'
-
     def _chemspeed_newcmd(self) -> bool:
         """
         Checks if the instrument has received a new command.
@@ -87,11 +82,6 @@ class ChemspeedController(object):
         """
         cmd_readout: list = read_csv(self.cmd_file, single_line=True)
         return cmd_readout[0] == "1"
-
-#        with open(self.cmd_file, 'r') as f:
-#            line = f.readline()
-#        message = line.split(',')
-#        return message[0] == '1'
 
     def chemspeed_blocked(self) -> bool:
         """
@@ -341,11 +331,7 @@ class ChemspeedController(object):
             fd_num
         )
         weights: list = read_csv(self.ret_file, single_line=True)
-        return [units.convert_mass(mass, dst="milli") for mass in weights[:-1]]
-
-#        with open(self.ret_file, 'r') as f:
-#            weights_str = f.readline().split(',')[:-1]
-#        return [float(w) * 1e6 for w in weights_str]
+        return [units.convert_mass(float(mass), dst="milli") for mass in weights[:-1]]
 
     def transfer_solid_swile(
             self,
@@ -360,11 +346,14 @@ class ChemspeedController(object):
             rd_step=1,
             fd_step=0.2,
             fd_amount=0.5,
-            # shake_angle=0.1,
-            # shake_time=2
+            shake_angle=0.1,
+            shake_time=2
     ):
     # TODO: Figure out what about the parameters shake_angle and shake_time
     #       They are currently still expected in the Manager.app
+
+    # TODO: Properly test this function using a Manager configuration where the GDU can be mounted without colliding
+    #       with the BALANCE zone.
 
         """Solid dispensing in Chemspeed (SWILE)
 
@@ -383,6 +372,10 @@ class ChemspeedController(object):
             shake_angle: source vial shaking angle (rad)
             shake_time: source vial shaking time (s)
         """
+
+        raise NotImplementedError("This function has never been properly tested on the Manager or the hardware, and"
+                                  "can therefore not be executed via the Python controller at the current stage. ")
+
         # Get different data types into uniform WellGroup data type
         source_wells: WellGroup = WellGroup(source, well_configuration=self.wells, logger=self.logger)
         destination_wells: WellGroup = WellGroup(destination, well_configuration=self.wells, logger=self.logger)
@@ -403,7 +396,9 @@ class ChemspeedController(object):
             pickup,
             rd_step,
             fd_step,
-            fd_amount
+            fd_amount,
+            shake_time,
+            shake_angle
         )
 
     def set_drawer(
@@ -574,15 +569,6 @@ class ChemspeedController(object):
         """
         self.set_vacuum("ISYNTH:1", state, vacuum)
 
-#        self.elements["ISYNTH"].validate_parameter("vacuum_pump", state)
-#        self.elements["ISYNTH"].validate_parameter("vacuum_pump_pressure", vacuum)
-
-#        self.execute(
-#            'set_isynth_vacuum',
-#            state,
-#            vacuum
-#        )
-
     def set_vacuum(
             self,
             vac_zone: Zone,
@@ -595,7 +581,7 @@ class ChemspeedController(object):
         Args:
             vac_zone: Zone to be set under vacuum
             state: Vacuum pump state state (on, off)
-            vacuum: Pressure to set the vacuum pump to.
+            vacuum: Pressure to set the vacuum pump to (in mbar).
         """
         vac_zone = WellGroup(vac_zone, self.wells, logger=self.logger)
         vac_zone.set_parameter("vacuum_pump", state)
@@ -611,7 +597,7 @@ class ChemspeedController(object):
                 details="ISYNTH-specific methods will be deprecated. Use operation-specific methods instead.")
     def set_isynth(
             self,
-            **kwargs: Optional[str, float]
+            **kwargs: Optional[Union[str, float]]
     ) -> None:
         """Setting ISYNTH values. The following values can be [None, str, float]. If set at None, no change to current state.
         If "off" then turns off. If set to a value, then the system will turn on and set to that value.
@@ -651,6 +637,8 @@ class ChemspeedController(object):
             gripping_force (float): gripping force for picking up the vials (N)
             gripping_depth (float): gripping depth for the distance (down) to picking it up (mm)
         """
+        raise NotImplementedError("This function has never been properly tested on the Manager or the hardware, and"
+                                  "can therefore not be executed via the Python controller at the current stage. ")
         # TODO: exclude crashing for certain zones
         # ATTN: Function has never been tested properly on the Manager.app or even on the ChemSpeed!!!
         source = WellGroup(source, well_configuration=self.wells, logger=self.logger)
@@ -698,10 +686,6 @@ class ChemspeedController(object):
         levels: list = read_csv(self.ret_file, single_line=True)
         return [float(level) for level in levels[:-1]]
 
-#        with open(self.ret_file, 'r') as f:
-#            levels_str = f.readline().split(',')[:-1]
-#        return [float(level) for level in levels_str]
-
     def unmount_all(self):
         """Unmounting all equipment from the arm"""
         self.execute('unmount_all')
@@ -731,9 +715,6 @@ class ChemspeedController(object):
             "box_temperature": units.temp_k_to_c,
             "box_humidity": units.no_change
         }
-
-#        with open(self.sts_file, 'r') as f:
-#            line = f.readline()[:-1]
 
         values: list = read_csv(self.sts_file, single_line=True)[:-1]
 
