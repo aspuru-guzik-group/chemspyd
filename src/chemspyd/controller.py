@@ -74,7 +74,7 @@ class Controller(object):
             src_distance: float = 3,
             dst_flow: float = 10,
             dst_bu: bool = False,
-            dst_distance: float = 0,
+            dst_distance: float = 5,
             rinse_volume: float = 2,
             rinse_stn: int = 1,
             airgap: float = 0.01,
@@ -550,29 +550,29 @@ class Controller(object):
             destination: str,
             gripping_force: float = 10,
             gripping_depth: float = 7.5,
-            push_in: bool = True
+            push_in: bool = False,
+            grip_inside: bool = False
     ) -> None:
         """ Vial Transport
 
         Args (float for non specified type):
-            source (str, list): vial zone for transfer
-            destination (str, list): zone for vial destination
-            gripping_force (float): gripping force for picking up the vials (N)
-            gripping_depth (float): gripping depth for the distance (down) to picking it up (mm)
+            source: vial zone for transfer
+            destination: zone for vial destination
+            gripping_force: gripping force for picking up the vials (N)
+            gripping_depth: gripping depth for the distance (down) to picking it up (mm)
+            push_in: False if the vial should be dropped into the position (for the last mm)
+            grip_inside: True if the vial should be gripped from the inside of the neck.
         """
-        raise NotImplementedError("This function has never been properly tested on the Manager or the hardware, and"
-                                  "can therefore not be executed via the Python controller at the current stage. ")
-        # TODO: exclude crashing for certain zones
-        # ATTN: Function has never been tested properly on the Manager.app or even on the ChemSpeed!!!
         source = WellGroup(source, well_configuration=self.wells, logger=self.logger)
         destination = WellGroup(destination, well_configuration=self.wells, logger=self.logger)
-        self.execute(
+        self.chemspeed.execute(
             'vial_transport',
             source_zone=str(source),
             destination_zone=str(destination),
             gripping_force=gripping_force,
             gripping_depth=gripping_depth,
-            push_vial_in=int(push_in)
+            push_vial_in=int(push_in),
+            grip_inside=int(grip_inside)
         )
 
     def set_zone_state(

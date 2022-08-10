@@ -6,6 +6,7 @@ from chemspyd.zones import Zone, WellGroup
 from chemspyd.exceptions import ChemspydZoneError
 from chemspyd.utils import UnitConverter
 
+
 def prime_pumps(
         mgr: Controller,
         pump: int,
@@ -31,6 +32,7 @@ def prime_pumps(
     mgr.transfer_liquid(
         source=src,
         destination=dst,
+        needle=pump,
         volume=volume,
         src_flow=20,
         dst_flow=40,
