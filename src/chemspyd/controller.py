@@ -195,6 +195,7 @@ class Controller(object):
             height: float = 0,
             chunk: float = 0.1,
             equilib: float = 5,
+            auto_dispense: bool = False,
             rd_speed: float = 30,
             rd_acc: float = 20,
             rd_amp: float = 100,
@@ -213,6 +214,7 @@ class Controller(object):
             height: dispense height relative to vial top, negative means into the vial (mm)
             chunk: rough dispensing chunk size (mg)
             equilib: equilibration time for balance (s)
+            auto_dispense: True if the auto dispense feature of AutoSuite should be used.
             rd_speed: rough dispensing rotation speed (rpm)
             rd_acc: rough dispensing acceleration (s^-2)
             rd_amp: rough dispensing rotation amplitute (%)
@@ -248,7 +250,8 @@ class Controller(object):
             fine_dispensing_speed=fd_speed,
             fine_dispensing_accuracy=fd_acc,
             finde_dispensing_amplitude=fd_amp,
-            fine_dispensing_angle=fd_num
+            fine_dispensing_angle=fd_num,
+            auto_dispense=int(auto_dispense)
         )
 
         return [
