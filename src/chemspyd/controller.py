@@ -125,26 +125,28 @@ class Controller(object):
 
         self.chemspeed.execute(
             'transfer_liquid',
-            source_zone=str(source),
-            destination_zone=str(destination),
-            volume=volume,
-            needle_no=needle,
-            source_flow=src_flow,
-            source_bottom_up=int(src_bu),
-            source_distance=src_distance,
-            destination_flow=dst_flow,
-            destination_bottom_up=int(dst_bu),
-            destination_distance=dst_distance,
-            rinse_volume=rinse_volume,
-            rinse_station=rinse_stn,
-            airgap=airgap,
-            post_airgap=post_airgap,
-            airgap_destination=airgap_dst,
-            extra_volume=extra_volume,
-            extra_destination=extra_dst,
-            equilibration_at_source=equib_src,
-            equilibration_at_destination=equib_dst,
-            multiple_aspirations=int(multiple_asp)
+            **{
+                "Source Zone": {"value": str(source), "unit": None},
+                "Destination Zone": {"value": str(destination), "unit": None},
+                "Volume": {"value": volume, "unit": "mL"},
+                "Needle No.": {"value": needle, "unit": None},
+                "Flow Rate (Source)": {"value": src_flow, "unit": "mL/min"},
+                "Bottom-Up (Source)": {"value": int(src_bu), "unit": None},
+                "Distance (Source)": {"value": src_distance, "unit": "mm"},
+                "Flow Rate (Destination)": {"value": dst_flow, "unit": "mL/min"},
+                "Bottom-Up (Destination)": {"value": int(dst_bu), "unit": None},
+                "Distance (Destination)": {"value": dst_distance, "unit": "mm"},
+                "Rinse Volume": {"value": rinse_volume, "unit": "mL"},
+                "Rinse Station No.": {"value": rinse_stn, "unit": None},
+                "Airgap Volume": {"value": airgap, "unit": "mL"},
+                "Post-Airgap Volume": {"value": post_airgap, "unit": "mL"},
+                "Airgap Destination": {"value": airgap_dst, "unit": None},
+                "Extra Volume": {"value": extra_volume, "unit": "mL"},
+                "Extra Volume Destination": {"value": extra_dst, "unit": None},
+                "Equilib. Time (Source)": {"value": equib_src, "unit": "s"},
+                "Equilib. Time (Destination)": {"value": equib_dst, "unit": "s"},
+                "Mult. Aspiration Allowed": {"value": int(multiple_asp), "unit": None}
+            }
         )
 
     @deprecated(deprecated_in="1.0", removed_in="2.0",
@@ -236,22 +238,24 @@ class Controller(object):
         destination.add_solid(quantity=0)
 
         self.chemspeed.execute(
-            'transfer_solid',
-            source_zone=str(source),
-            destination_zone=str(destination),
-            weight=weight,
-            dispense_height=height,
-            chunk_size=chunk,
-            equilibration_time=equilib,
-            rough_dispensing_speed=rd_speed,
-            rough_dispensing_accuracy=rd_acc,
-            rough_dispensing_amplitude=rd_amp,
-            finde_dispensing_amount=fd_amount,
-            fine_dispensing_speed=fd_speed,
-            fine_dispensing_accuracy=fd_acc,
-            finde_dispensing_amplitude=fd_amp,
-            fine_dispensing_angle=fd_num,
-            auto_dispense=int(auto_dispense)
+            "transfer_solid",
+            **{
+                "Source Zone": {"value": str(source), "unit": None},
+                "Destination Zone": {"value": str(destination), "unit": None},
+                "Mass": {"value": weight, "unit": "mg"},
+                "Dispensing Height": {"value": height, "unit": "mm"},
+                "Chunk Size": {"value": chunk, "unit": "mg"},
+                "Equilibration Time": {"value": equilib, "unit": "s"},
+                "Rough Dispensing Speed": {"value": rd_speed, "unit": "rpm"},  # TODO: Double-Check Units
+                "Rough Dispensing Acceleration": {"value": rd_acc, "unit": "deg s^-2"},
+                "Rough Dispensing Amplitude": {"value": rd_amp, "unit": None},
+                "Fine Dispensing Amount": {"value": fd_amount, "unit": "mg"},
+                "Fine Dispensing Speed": {"value": fd_speed, "unit": "rpm"},  # TODO: Double-Check Units
+                "Fine Dispensing Acceleration": {"value": fd_acc, "unit": "deg s^-2"},
+                "Fine Dispensing Amplitude": {"value": fd_amp, "unit": None},
+                "Fine Dispensing Angle": {"value": fd_num, "unit": "°"},
+                "Auto Dispense Activated": {"value": int(auto_dispense), "unit": None}
+            }
         )
 
         return [
@@ -311,20 +315,21 @@ class Controller(object):
         destination.add_solid(quantity=0)
 
         self.chemspeed.execute(
-            'transfer_solid_swile',
-            source_zone=str(source),
-            destination_zone=str(destination),
-            weight=weight,
-            height=height,
-            chunk_size=chunk,
-            equilibration_time=equilib,
-            depth=depth,
-            pickup_volume=pickup,
-            rough_dispensing_step_size=rd_step,
-            fine_dispensing_step_size=fd_step,
-            fine_dispensing_amount=fd_amount,
-            shake_time=shake_time,
-            shake_angle=shake_angle
+            "transfer_solid_swile",
+            **{
+                "Source Zone": {"value": str(source), "unit": None},
+                "Destination Zone": {"value": str(destination), "unit": None},
+                "Mass": {"value": weight, "unit": "mg"},
+                "Dispensing Height": {"value": height, "unit": "mm"},
+                "Chunk Size": {"value": chunk, "unit": "mg"},
+                "Equilibration Time": {"value": equilib, "unit": "s"},
+                "Dipping Depth": {"value": depth, "unit": "mm"},
+                "Pickup Volume": {"value": pickup, "unit": "µL"},
+                "Rough Dispensing Step Size": {"value": rd_step, "unit": "µL"},
+                "Fine Dispensing Step Size": {"value": fd_step, "unit": "µL"},
+                "Shake Time": {"value": shake_time, "unit": "s"},
+                "Shake Angle": {"value": shake_angle, "unit": "s"}
+            }
         )
 
     def set_drawer(
@@ -347,10 +352,12 @@ class Controller(object):
         zone.set_parameter("environment", environment)
 
         self.chemspeed.execute(
-            'set_drawer',
-            zone=str(zone),
-            state=state,
-            environment=environment
+            "set_drawer",
+            **{
+                "Zone": {"value": str(zone), "unit": None},
+                "Target State": {"value": state, "unit": None},
+                "Environment": {"value": environment, "unit": None}
+            }
         )
 
     @deprecated(deprecated_in="chemspyd-1.0", removed_in="chemspyd-2.0",
@@ -388,9 +395,11 @@ class Controller(object):
 
         self.chemspeed.execute(
             "set_reflux",
-            zone=reflux_zone.get_element_string(),
-            state=state,
-            temperature=temperature
+            **{
+                "Zone": {"value": reflux_zone.get_element_string, "unit": None},
+                "Target State": {"value": state, "unit": None},
+                "Chiller Temperature": {"value": temperature, "unit": "°C"}
+            }
         )
 
     @deprecated(deprecated_in="chemspyd-1.0", removed_in="chemspyd-2.0",
@@ -433,10 +442,12 @@ class Controller(object):
 
         self.chemspeed.execute(
             "set_temperature",
-            zone=str(temp_zone),
-            state=state,
-            temperature=temperature,
-            ramp_speed=ramp
+            **{
+                "Zone": {"value": temp_zone.get_element_string, "unit": None},
+                "Target State": {"value": state, "unit": None},
+                "Temperature": {"value": temperature, "unit": "°C"},
+                "Ramp Speed": {"value": ramp, "unit": "°C/min"}
+            }
         )
 
     @deprecated(deprecated_in="chemspyd-1.0", removed_in="chemspyd-2.0",
@@ -473,11 +484,14 @@ class Controller(object):
         stir_zone.set_parameter("stir_rate", rpm)
 
         self.unmount_all()
+
         self.chemspeed.execute(
-            'set_stir',
-            zone=stir_zone.get_element_string(),
-            state=state,
-            stir_rate=rpm
+            "set_stir",
+            **{
+                "Zone": {"value": stir_zone.get_element_string, "unit": None},
+                "Target State": {"value": state, "unit": None},
+                "Stir Rate": {"value": rpm, "unit": "rpm"}
+            }
         )
 
     @deprecated(deprecated_in="chemspyd-1.0", removed_in="chemspyd-2.0",
@@ -512,11 +526,14 @@ class Controller(object):
         vac_zone = WellGroup(vac_zone, self.wells, logger=self.logger)
         vac_zone.set_parameter("vacuum_pump", state)
         vac_zone.set_parameter("vacuum_pump_pressure", vacuum)
+
         self.chemspeed.execute(
             "set_vacuum",
-            zone=vac_zone.get_element_string(),
-            state=state,
-            pressure=vacuum
+            **{
+                "Zone": {"value": vac_zone.get_element_string, "unit": None},
+                "Target State": {"value": state, "unit": None},
+                "Pressure": {"value": vacuum, "unit": "mbar"}
+            }
         )
 
     @deprecated(deprecated_in="chemspyd-1.0", removed_in="chemspyd-2.0",
@@ -568,14 +585,17 @@ class Controller(object):
         """
         source = WellGroup(source, well_configuration=self.wells, logger=self.logger)
         destination = WellGroup(destination, well_configuration=self.wells, logger=self.logger)
+
         self.chemspeed.execute(
-            'vial_transport',
-            source_zone=str(source),
-            destination_zone=str(destination),
-            gripping_force=gripping_force,
-            gripping_depth=gripping_depth,
-            push_vial_in=int(push_in),
-            grip_inside=int(grip_inside)
+            "vial_transport",
+            **{
+                "Source Zone": {"value": str(source), "unit": None},
+                "Destination Zone": {"value": str(destination), "unit": None},
+                "Gripping Force": {"value": gripping_force, "unit": "N"},
+                "Gripping Depth": {"value": gripping_depth, "unit": "mm"},
+                "Push Vial In": {"value": int(push_in), "unit": None},
+                "Grip Vial from Inside": {"value": int(grip_inside), "unit": None}
+            }
         )
 
     def set_zone_state(
@@ -591,10 +611,13 @@ class Controller(object):
             state (bool): Enable or disable (True, False)
         """
         zone = WellGroup(zone, well_configuration=self.wells, logger=self.logger)
+
         self.chemspeed.execute(
-            'set_zone_state',
-            zone=str(zone),
-            state=int(state)
+            "set_zone_state",
+            **{
+                "Zone": {"value": zone, "unit": None},
+                "Target State": {"value": int(state), "unit": None}
+            }
         )
 
     def measure_level(
@@ -607,9 +630,14 @@ class Controller(object):
             zone (Zone): zones to measure
         """
         zone = WellGroup(zone, well_configuration=self.wells, logger=self.logger)
+
         self.chemspeed.execute(
-            'measure_level',
-            zone=str(zone))
+            "measure_level",
+            **{
+                "Zone": {"value": str(zone), "unit": None}
+            }
+        )
+
         return [float(level) for level in self.chemspeed.return_data]
 
     def unmount_all(self):
@@ -661,5 +689,7 @@ class Controller(object):
         """
         self.chemspeed.execute(
             "wait",
-            time=duration
+            **{
+                "Time": {"value": duration, "unit": "s"}
+            }
         )

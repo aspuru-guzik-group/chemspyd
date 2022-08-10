@@ -119,7 +119,7 @@ class ChemspeedExecutor(object):
             **kwargs: Dictionary of keyword arguments for the command.
                       Keys are arbitrary and are just used for logging.
         """
-        args_line = ','.join([str(arg) for arg in kwargs.values()])
+        args_line = ','.join([str(kwargs[kwarg]["value"]) for kwarg in kwargs])
 
         # skip everything if simulation
         if self.simulation:
@@ -162,9 +162,11 @@ class ChemspeedExecutor(object):
             self.logger.info(f"Executing {command}.")
 
         elif self.verbosity == 2:
-            self.logger.info(f"Executing {command} ({', '.join([str(value) for value in kwargs.values()])})")
+            self.logger.info(f"Executing {command} ({', '.join([str(kwargs[kwarg]['value']) for kwarg in kwargs])})")
 
         elif self.verbosity >= 3:
             self.logger.info(f"Executing {command}.")
             for arg_name, arg_value in zip(kwargs, kwargs.values()):
-                self.logger.info(f"{' '*24}{arg_name} = {arg_value}", extra={"format": False})
+                unit = arg_value["unit"] if arg_value["unit"] is not None else ""
+                self.logger.info(f"{' '*24}{arg_name} = {arg_value['value']} {unit}", extra={"format": False})
+                # FIXME: Spacing is hard-coded currently, should be rather inferred from the logger.
