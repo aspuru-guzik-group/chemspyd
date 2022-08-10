@@ -1,3 +1,6 @@
+#!/usr/bin/python
+# -*- coding: UTF-8 -*-
+
 from typing import Dict, List, Union, Optional
 from pathlib import Path
 from logging import Logger
@@ -25,6 +28,7 @@ class Controller(object):
             status_keys: Union[str, Path],
             stdout: bool = True,
             logfile: Optional[Union[str, Path]] = None,
+            verbosity: int = 3,
             simulation: bool = False,
             track_quantities: bool = False
     ) -> None:
@@ -48,7 +52,7 @@ class Controller(object):
         """
         self.logger: Logger = get_logger(stdout, logfile)
 
-        self.chemspeed: ChemspeedExecutor = ChemspeedExecutor(cmd_folder, self.logger, simulation)
+        self.chemspeed: ChemspeedExecutor = ChemspeedExecutor(cmd_folder, self.logger, verbosity, simulation)
 
         self.system_liquids: dict = load_json(system_liquids)
         self.elements, self.wells = initialize_zones(load_json(element_config), track_quantities, self.logger)
@@ -108,12 +112,12 @@ class Controller(object):
             multiple_asp: True if multiple aspirations are allowed.
         """
         # Get different data types into uniform WellGroup data type
-        source_wells: WellGroup = WellGroup(source, well_configuration=self.wells, logger=self.logger)
-        destination_wells: WellGroup = WellGroup(destination, well_configuration=self.wells, logger=self.logger)
+        source: WellGroup = WellGroup(source, well_configuration=self.wells, logger=self.logger)
+        destination: WellGroup = WellGroup(destination, well_configuration=self.wells, logger=self.logger)
 
         # Update well states and information
-        source_wells.remove_liquid(quantity=volume)
-        destination_wells.add_liquid(quantity=volume)
+        source.remove_liquid(quantity=volume)
+        destination.add_liquid(quantity=volume)
 
         # Get correct rinse station
         if not needle == 0:
@@ -121,26 +125,26 @@ class Controller(object):
 
         self.chemspeed.execute(
             'transfer_liquid',
-            source_wells.get_zone_string(),
-            destination_wells.get_zone_string(),
-            volume,
-            needle,
-            src_flow,
-            int(src_bu),
-            src_distance,
-            dst_flow,
-            int(dst_bu),
-            dst_distance,
-            rinse_volume,
-            rinse_stn,
-            airgap,
-            post_airgap,
-            airgap_dst,
-            extra_volume,
-            extra_dst,
-            equib_src,
-            equib_dst,
-            int(multiple_asp)
+            source_zone=str(source),
+            destination_zone=str(destination),
+            volume=volume,
+            needle_no=needle,
+            source_flow=src_flow,
+            source_bottom_up=int(src_bu),
+            source_distance=src_distance,
+            destination_flow=dst_flow,
+            destination_bottom_up=int(dst_bu),
+            destination_distance=dst_distance,
+            rinse_volume=rinse_volume,
+            rinse_station=rinse_stn,
+            airgap=airgap,
+            post_airgap=post_airgap,
+            airgap_destination=airgap_dst,
+            extra_volume=extra_volume,
+            extra_destination=extra_dst,
+            equilibration_at_source=equib_src,
+            equilibration_at_destination=equib_dst,
+            multiple_aspirations=int(multiple_asp)
         )
 
     @deprecated(deprecated_in="1.0", removed_in="2.0",
@@ -222,29 +226,29 @@ class Controller(object):
             weights (list of float): real dispense weights (mg)
         """
         # Get different data types into uniform WellGroup data type
-        source_wells: WellGroup = WellGroup(source, well_configuration=self.wells, logger=self.logger)
-        destination_wells: WellGroup = WellGroup(destination, well_configuration=self.wells, logger=self.logger)
+        source: WellGroup = WellGroup(source, well_configuration=self.wells, logger=self.logger)
+        destination: WellGroup = WellGroup(destination, well_configuration=self.wells, logger=self.logger)
 
         # Update well states and information
-        source_wells.remove_solid(quantity=weight)
-        destination_wells.add_solid(quantity=0)
+        source.remove_solid(quantity=weight)
+        destination.add_solid(quantity=0)
 
         self.chemspeed.execute(
             'transfer_solid',
-            source_wells.get_zone_string(),
-            destination_wells.get_zone_string(),
-            weight,
-            height,
-            chunk,
-            equilib,
-            rd_speed,
-            rd_acc,
-            rd_amp,
-            fd_amount,
-            fd_speed,
-            fd_acc,
-            fd_amp,
-            fd_num
+            source_zone=str(source),
+            destination_zone=str(destination),
+            weight=weight,
+            dispense_height=height,
+            chunk_size=chunk,
+            equilibration_time=equilib,
+            rough_dispensing_speed=rd_speed,
+            rough_dispensing_accuracy=rd_acc,
+            rough_dispensing_amplitude=rd_amp,
+            finde_dispensing_amount=fd_amount,
+            fine_dispensing_speed=fd_speed,
+            fine_dispensing_accuracy=fd_acc,
+            finde_dispensing_amplitude=fd_amp,
+            fine_dispensing_angle=fd_num
         )
 
         return [
@@ -296,28 +300,28 @@ class Controller(object):
                                   "can therefore not be executed via the Python controller at the current stage. ")
 
         # Get different data types into uniform WellGroup data type
-        source_wells: WellGroup = WellGroup(source, well_configuration=self.wells, logger=self.logger)
-        destination_wells: WellGroup = WellGroup(destination, well_configuration=self.wells, logger=self.logger)
+        source: WellGroup = WellGroup(source, well_configuration=self.wells, logger=self.logger)
+        destination: WellGroup = WellGroup(destination, well_configuration=self.wells, logger=self.logger)
 
         # Update well states and information
-        source_wells.remove_solid(quantity=weight)
-        destination_wells.add_solid(quantity=0)
+        source.remove_solid(quantity=weight)
+        destination.add_solid(quantity=0)
 
-        self.execute(
+        self.chemspeed.execute(
             'transfer_solid_swile',
-            source_wells.get_zone_string(),
-            destination_wells.get_zone_string(),
-            weight,
-            height,
-            chunk,
-            equilib,
-            depth,
-            pickup,
-            rd_step,
-            fd_step,
-            fd_amount,
-            shake_time,
-            shake_angle
+            source_zone=str(source),
+            destination_zone=str(destination),
+            weight=weight,
+            height=height,
+            chunk_size=chunk,
+            equilibration_time=equilib,
+            depth=depth,
+            pickup_volume=pickup,
+            rough_dispensing_step_size=rd_step,
+            fine_dispensing_step_size=fd_step,
+            fine_dispensing_amount=fd_amount,
+            shake_time=shake_time,
+            shake_angle=shake_angle
         )
 
     def set_drawer(
@@ -341,9 +345,9 @@ class Controller(object):
 
         self.chemspeed.execute(
             'set_drawer',
-            zone.get_zone_string(),
-            state,
-            environment
+            zone=str(zone),
+            state=state,
+            environment=environment
         )
 
     @deprecated(deprecated_in="chemspyd-1.0", removed_in="chemspyd-2.0",
@@ -381,9 +385,9 @@ class Controller(object):
 
         self.chemspeed.execute(
             "set_reflux",
-            reflux_zone.get_element_string(),
-            state,
-            temperature
+            zone=reflux_zone.get_element_string(),
+            state=state,
+            temperature=temperature
         )
 
     @deprecated(deprecated_in="chemspyd-1.0", removed_in="chemspyd-2.0",
@@ -426,10 +430,10 @@ class Controller(object):
 
         self.chemspeed.execute(
             "set_temperature",
-            temp_zone.get_zone_string(),
-            state,
-            temperature,
-            ramp
+            zone=str(temp_zone),
+            state=state,
+            temperature=temperature,
+            ramp_speed=ramp
         )
 
     @deprecated(deprecated_in="chemspyd-1.0", removed_in="chemspyd-2.0",
@@ -468,9 +472,9 @@ class Controller(object):
         self.unmount_all()
         self.chemspeed.execute(
             'set_stir',
-            stir_zone.get_element_string(),
-            state,
-            rpm
+            zone=stir_zone.get_element_string(),
+            state=state,
+            stir_rate=rpm
         )
 
     @deprecated(deprecated_in="chemspyd-1.0", removed_in="chemspyd-2.0",
@@ -507,9 +511,9 @@ class Controller(object):
         vac_zone.set_parameter("vacuum_pump_pressure", vacuum)
         self.chemspeed.execute(
             "set_vacuum",
-            vac_zone.get_element_string(),
-            state,
-            vacuum
+            zone=vac_zone.get_element_string(),
+            state=state,
+            pressure=vacuum
         )
 
     @deprecated(deprecated_in="chemspyd-1.0", removed_in="chemspyd-2.0",
@@ -564,11 +568,11 @@ class Controller(object):
         destination = WellGroup(destination, well_configuration=self.wells, logger=self.logger)
         self.execute(
             'vial_transport',
-            source.get_zone_string(),
-            destination.get_zone_string(),
-            gripping_force,
-            gripping_depth,
-            int(push_in)
+            source_zone=str(source),
+            destination_zone=str(destination),
+            gripping_force=gripping_force,
+            gripping_depth=gripping_depth,
+            push_vial_in=int(push_in)
         )
 
     def set_zone_state(
@@ -586,8 +590,8 @@ class Controller(object):
         zone = WellGroup(zone, well_configuration=self.wells, logger=self.logger)
         self.chemspeed.execute(
             'set_zone_state',
-            zone.get_zone_string(),
-            int(state)
+            zone=str(zone),
+            state=int(state)
         )
 
     def measure_level(
@@ -600,7 +604,9 @@ class Controller(object):
             zone (Zone): zones to measure
         """
         zone = WellGroup(zone, well_configuration=self.wells, logger=self.logger)
-        self.chemspeed.execute('measure_level', zone.get_zone_string())
+        self.chemspeed.execute(
+            'measure_level',
+            zone=str(zone))
         return [float(level) for level in self.chemspeed.return_data]
 
     def unmount_all(self):
@@ -652,5 +658,5 @@ class Controller(object):
         """
         self.chemspeed.execute(
             "wait",
-            duration
+            time=duration
         )

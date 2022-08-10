@@ -1,3 +1,6 @@
+#!/usr/bin/python
+# -*- coding: UTF-8 -*-
+
 from typing import Union, List
 from pathlib import Path
 from logging import Logger
@@ -8,23 +11,34 @@ from .utils import read_csv, write_csv
 
 class ChemspeedExecutor(object):
     """
+    Executor class for communication with the Manager, executed by the AutoSuiteExecutor.
 
+    Communicates by reading and writing the following four files:
+        - command.csv   (Commands sent to the instrument)
+        - response.csv  (Response by the instrument - idle / busy information)
+        - return.csv    (Values and data returned from functions in the Manager)
+        - status.csv    (Instrument status written by the Manager)
     """
+
     def __init__(
             self,
             cmd_folder: Union[str, Path],
             logger: Logger,
+            verbosity: int = 3,
             simulation: bool = False,
     ):
         """
+        Instantiates the ChemspeedExecutor.
 
         Args:
             cmd_folder: Path to the folder containing the csv files for communicating with the instrument.
             logger: logging.Logger object
+            verbosity: Verbosity level (between 0 and 3; 0 -> no output, 3 -> very verbose output)
             simulation: True in order to run the Python controller (not Autosuite!) in simulation mode.
                         Will only print execution statements then (without sending any commands to the instrument).
         """
         self.logger: Logger = logger
+        self.verbosity: int = verbosity
 
         self.command_file: Path = Path(cmd_folder) / "command.csv"
         self.response_file: Path = Path(cmd_folder) / "response.csv"
@@ -91,41 +105,66 @@ class ChemspeedExecutor(object):
         """
         return read_csv(self.status_file, single_line=True)[:-1]
 
-    #######################################
-    # Execution of Commands to AutoSuite  #
-    #######################################
+    ###########################################################
+    # Execution of Commands to send to the AutoSuiteExecutor  #
+    ###########################################################
 
-    def execute(self, command: str, *args) -> None:
+    def execute(self, command: str, **kwargs) -> None:
         """
         Main method to execute a given operation.
         Writes the command into the command.csv file, including the command name and all required arguments.
 
         Args:
             command (str): The command name to be received in Chemspeed.
-            *args: List of arguments for the command.
+            **kwargs: Dictionary of keyword arguments for the command.
+                      Keys are arbitrary and are just used for logging.
         """
-        args_line = ','.join([str(arg) for arg in args])
-        exec_message = f"Execute: {command}({args_line.replace(',', ', ')})"
+        args_line = ','.join([str(arg) for arg in kwargs.values()])
 
         # skip everything if simulation
         if self.simulation:
-            self.logger.debug(exec_message)
+            self._log_command_details(command, kwargs)
             return
 
         # send to file
         while self.blocked:
             time.sleep(0.1)
+
         write_csv([[1, command], [args_line, "end"]], file_name=self.command_file)
+        self._log_command_details(command, kwargs)
 
-        # stdout & logging
-        self.logger.info(exec_message, extra={"continue_line": True})
-
-        # wait until no idle to confirm that the command was executed
+        # wait until self.idle == False to confirm that the command was executed
         while self.idle:
             time.sleep(0.1)
-        self.logger.debug("-> started", extra={"format": False, "continue_line": True})
+        self.logger.debug("    Execution Started: ✓  ", extra={"continue_line": True})
 
         # self block, optional, or change to error detection
         while self.blocked:
             time.sleep(0.1)
-        self.logger.debug("-> completed", extra={"format": False})
+        self.logger.debug("Execution Completed: ✓", extra={"format": False})
+
+    def _log_command_details(self, command: str, kwargs: dict) -> None:
+        """
+        Logs the details of the execution of a given command based on the verbosity level specified:
+            0: ---
+            1: Executing set_stir
+            2: Executing set_stir(ISYNTH:1, on, 200)
+            3: Executing set_stir
+                   stir_zone: ISYNTH:1
+                   state: on
+                   stir_rate: 200
+
+        Args:
+            command: The command name to be sent to the AutoSuiteExecutor.
+            kwargs: Keyword arguments for the command.
+        """
+        if self.verbosity == 1:
+            self.logger.info(f"Executing {command}.")
+
+        elif self.verbosity == 2:
+            self.logger.info(f"Executing {command} ({', '.join([str(value) for value in kwargs.values()])})")
+
+        elif self.verbosity >= 3:
+            self.logger.info(f"Executing {command}.")
+            for arg_name, arg_value in zip(kwargs, kwargs.values()):
+                self.logger.info(f"{' '*24}{arg_name} = {arg_value}", extra={"format": False})

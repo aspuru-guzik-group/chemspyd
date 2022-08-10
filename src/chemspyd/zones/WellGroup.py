@@ -162,7 +162,7 @@ class WellGroup(object):
         for well in self._all_wells:
             well.remove_solid(quantity)
 
-    def get_zone_string(self) -> str:
+    def __str__(self) -> str:
         """
         Converts the list of wells into a single, semicolon-separated string of well names.
 
