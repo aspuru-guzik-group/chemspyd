@@ -68,7 +68,7 @@ class Controller(object):
             source: Zone,
             destination: Zone,
             volume: float,
-            needle: int = 0,
+            needle: int,
             src_flow: float = 10,
             src_bu: bool = True,
             src_distance: float = 3,
