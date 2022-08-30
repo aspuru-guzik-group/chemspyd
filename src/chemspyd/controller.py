@@ -396,7 +396,7 @@ class Controller(object):
         self.chemspeed.execute(
             "set_reflux",
             **{
-                "Zone": {"value": reflux_zone.get_element_string, "unit": None},
+                "Zone": {"value": reflux_zone.get_element_string(), "unit": None},
                 "Target State": {"value": state, "unit": None},
                 "Chiller Temperature": {"value": temperature, "unit": "°C"}
             }
@@ -443,7 +443,7 @@ class Controller(object):
         self.chemspeed.execute(
             "set_temperature",
             **{
-                "Zone": {"value": temp_zone.get_element_string, "unit": None},
+                "Zone": {"value": temp_zone.get_element_string(), "unit": None},
                 "Target State": {"value": state, "unit": None},
                 "Temperature": {"value": temperature, "unit": "°C"},
                 "Ramp Speed": {"value": ramp, "unit": "°C/min"}
@@ -488,7 +488,7 @@ class Controller(object):
         self.chemspeed.execute(
             "set_stir",
             **{
-                "Zone": {"value": stir_zone.get_element_string, "unit": None},
+                "Zone": {"value": stir_zone.get_element_string(), "unit": None},
                 "Target State": {"value": state, "unit": None},
                 "Stir Rate": {"value": rpm, "unit": "rpm"}
             }
@@ -530,7 +530,7 @@ class Controller(object):
         self.chemspeed.execute(
             "set_vacuum",
             **{
-                "Zone": {"value": vac_zone.get_element_string, "unit": None},
+                "Zone": {"value": vac_zone.get_element_string(), "unit": None},
                 "Target State": {"value": state, "unit": None},
                 "Pressure": {"value": vacuum, "unit": "mbar"}
             }
