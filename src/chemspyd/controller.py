@@ -87,28 +87,29 @@ class Controller(object):
             multiple_asp: bool = False,
     ):
         """
-        Executes a liquid transfer on the Chemspeed platform.
+        Executes a liquid transfer from the source to the target zone.
+        Uses the 'Transfer Volumetrically' method in AutoSuite.
 
         Args:
             source: Source zone for the liquid transfer.
             destination: Destination zone for the liquid transfer.
-            volume: volume to transfer (0 mL <= volume <= 20 mL)
+            volume: Volume to transfer [mL]
             needle: Number of the needle to use (0 means all needles).
-            src_flow: draw speed at source (0.05 mL/min <= src_flow <= 125 mL/min)
+            src_flow: Draw speed at the source [mL/min] (0.05 mL/min <= src_flow <= 125 mL/min)
             src_bu: True if liquid at source should be drawn bottom-up.
-            src_distance: Bottom-up / top-down distance at the source (mm).
-            dst_flow: dispense speed at destination (0.05 mL/min <= src_flow <= 125 mL/min)
+            src_distance: Needle bottom-up / top-down distance at the source [mm].
+            dst_flow: Dispense speed at destination [mL/min] (0.05 mL/min <= src_flow <= 125 mL/min)
             dst_bu: True if liquid at destination should be dispensed bottom-up.
-            dst_distance: Bottom-up / top-down distance at the destination (in mm).
-            rinse_volume: Needle rinsing volume after action (mL)
-            rinse_stn: Integer number of the rinse station (1 or 2).
-            airgap: Airgap volume (mL)
-            post_airgap: Post-airgap volume (mL)
+            dst_distance: Needle bottom-up / top-down distance at the destination [mm].
+            rinse_volume: Needle rinsing volume after action [mL]
+            rinse_stn: Integer number of the rinse station.   # ATTN: How generalizable is this beyond our hardware setup?
+            airgap: Airgap volume [mL]
+            post_airgap: Post-airgap volume [mL]
             airgap_dst: Destination zone for airgap
-            extra_volume: Extra volume (mL)
+            extra_volume: Extra volume [mL]
             extra_dst: Destination zone for extra volume
-            equib_src: Equilibration time when drawing from source (s)
-            equib_dst: Equilibration time when dispensing to destination (s)
+            equib_src: Equilibration time when drawing from source [s]
+            equib_dst: Equilibration time when dispensing to destination [s]
             multiple_asp: True if multiple aspirations are allowed.
         """
         # Get different data types into uniform WellGroup data type
@@ -163,17 +164,21 @@ class Controller(object):
                       needle: int = 0,
 
                       ):
-        """Inject liquid to the injection ports. This will use volume+0.1ml of liquid.
+        """
+        DEPRECATED! For injecting to the HPLC, use either transfer_liquid() directly, or refer to the routines sub-package.
+                    Syntax / argument naming is different from transfer_liquid()
 
-        Args (float for non specified type):
-            source (str, list): zone for transfer source
-            destination (str, list): zone for injection, can only be INJECT_I or INJECT_L
-            volume: volume to transfer (mL)
-            src_flow: draw speed at source (mL/min)
-            src_bu: needle bottoms up distance at source (mm)
-            dst_flow: draw speed at destination (mL/min)
-            dst_bu: needle bottoms up distance at destination (mm)
-            rinse_volume: needle rinsing volume after action (mL)
+        Injects liquid to the specified HPLC injection ports. 
+
+        Args:
+            source: Source zone for the injection
+            destination: Destination zone for the injection
+            volume: Volume to inject [mL]
+            src_flow: Draw speed at the source [mL/min]
+            src_bu: Needle bottom-up distance at the source [mm]
+            dst_flow: Dispense speed at the destination [mL/min]
+            dst_bu: Needle bottom-up distance at the destination [mm]
+            rinse_volume: Needle rinsing volume after action [mL]
         """
         self.transfer_liquid(
             source=source,
@@ -207,27 +212,29 @@ class Controller(object):
             fd_amp: float = 40,
             fd_num: float = 360
     ) -> List[float]:
-        """Solid dispensing in Chemspeed.
+        """
+        Executes a solid transfer from the source to the target destination.
+        Uses the 'Transfer Gravimetrically' method in AutoSuite. 
 
-        Args (float for non specified type):
-            source (str, list): solid zone for transfer
-            destination (str, list): zone for dispensing destination
-            weight: weight to dispense (mg)
-            height: dispense height relative to vial top, negative means into the vial (mm)
-            chunk: rough dispensing chunk size (mg)
-            equilib: equilibration time for balance (s)
+        Args:
+            source: Source zone for the solid transfer. 
+            destination: Destination zone for the solid transfer. 
+            weight: Mass to dispense [mg]
+            height: Dispense height relative to vial top [mm]
+            chunk: Rough dispensing chunk size [mg]
+            equilib: Equilibration time for the balance [s]
             auto_dispense: True if the auto dispense feature of AutoSuite should be used.
-            rd_speed: rough dispensing rotation speed (rpm)
-            rd_acc: rough dispensing acceleration (s^-2)
-            rd_amp: rough dispensing rotation amplitute (%)
-            fd_amount: amount at the end for fine dispensing (mg)
-            fd_speed: fine dispensing rotation speed (rpm)
-            fd_acc: fine dispensing acceleration (s^-2)
-            fd_amp: fine dispensing rotation amplitute (%)
-            fd_num: fine dispensing angle (degree, 0-360)
+            rd_speed: Rough dispensing rotation speed [rpm]
+            rd_acc: Rough dispensing acceleration [s^-2]
+            rd_amp: Rough dispensing rotation amplitute [%]
+            fd_amount: Mass to be fine-dosed at the end of the dispense [mg]
+            fd_speed: Fine dispensing rotation speed [rpm]
+            fd_acc: Fine dispensing acceleration [s^-2]
+            fd_amp: Fine dispensing rotation amplitute [%]
+            fd_num: Fine dispensing angle [Deg]
 
         Returns:
-            weights (list of float): real dispense weights (mg)
+            List[float]: Measured dispense weights [mg] 
         """
         # Get different data types into uniform WellGroup data type
         source: WellGroup = WellGroup(source, well_configuration=self.wells, logger=self.logger)
@@ -339,13 +346,13 @@ class Controller(object):
             environment: str = 'none'
     ):
         """
-        Setting ISYNTH drawer position. For accessing the vials in ISYNTH.
-        Can set the vials under vacuum, inert or none state.
+        Sets the drawer positions of the ISYNTH.
+        Uses the 'Set Drawer Valve' method in AutoSuite. 
 
         Args:
-            zone (str, list): zones for setting drawer state, has to be in ISYNTH
-            state (str): drawer open state (open, close)
-            environment (str): environment state the zone will be in (inert, vacuum, none)
+            zone: Zone for setting the drawer state.
+            state: Drawer state (open, close)
+            environment: Environment state to set the zone (inert, vacuum, none)
         """
         zone = WellGroup(zone, well_configuration=self.wells, logger=self.logger)
         zone.set_parameter("drawer", state)
@@ -367,11 +374,14 @@ class Controller(object):
             state: str,
             temperature: float = 15
     ) -> None:
-        """Setting ISYNTH reflux chilling temperature.
+        """
+        DEPRECATED: Use set_reflux with zone specification instead. 
+
+        Sets the reflux state and temperature for the ISYNTH.
 
         Args:
-            state (str): cryostat state (on, off)
-            temperature (float): temperature to set at when cryostat is on (C)
+            state: State of the cryostat (on, off)
+            temperature: Temperature to set the condensor to [C]
         """
         self.set_reflux("ISYNTH:1", state, temperature)
 
@@ -383,6 +393,7 @@ class Controller(object):
     ) -> None:
         """
         Sets the reflux chilling temperature on a defined zone.
+        Uses the 'Reflux' method in AutoSuite. 
 
         Args:
             reflux_zone: Zone to be refluxed
@@ -410,12 +421,15 @@ class Controller(object):
             temperature: float = 15,
             ramp: float = 0
     ) -> None:
-        """Setting ISYNTH heating temperature.
+        """
+        DEPRECATED: Use set_temperature with zone specification instead. 
+
+        Sets the heating temperature of the ISYNTH.
 
         Args:
-            state (str): cryostat state (on, off)
-            temperature (float): temperature to set at when cryostat is on (C)
-            ramp (float): ramping speed for the temperature (C/min)
+            state: Cryostat state (on, off)
+            temperature: Temperature to set the cryostat to [C]
+            ramp: Ramping speed for the temperature [C/min]
         """
         self.set_temperature("ISYNTH:1", state, temperature, ramp)
 
@@ -428,12 +442,13 @@ class Controller(object):
     ) -> None:
         """
         Sets the heating temperature for a given element.
+        Uses the 'Heat / Cool' method from AutoSuite.
 
         Args:
             temp_zone: Zone to be heated / cooled (ISYNTH, RACK_HS)
             state: Cryostat state (on, off)
-            temperature: Temperature (in °C) to set the cryostat to.
-            ramp: Ramping speed for the temperature (in °C / min)
+            temperature: Temperature to set the cryostat to [C]
+            ramp: Ramping speed for the temperature [C/min]
         """
         temp_zone = WellGroup(temp_zone, self.wells, logger=self.logger)
         temp_zone.set_parameter("thermostat", state)
@@ -457,11 +472,14 @@ class Controller(object):
             state: str,
             rpm: float = 200
     ) -> None:
-        """Setting ISYNTH vortex speed.
+        """
+        DEPRECATED! Use set_stir with zone specification instead. 
+
+        Sets the ISYNTH stirring status and speed.
 
         Args:
-            state (str): vortex state (on, off)
-            rpm (float): vortex rotation speed (rpm)
+            state (str): Vortex state (on, off)
+            rpm (float): Vortex rotation speed [rpm]
         """
         self.set_stir("ISYNTH:1", state, rpm)
 
@@ -472,12 +490,13 @@ class Controller(object):
             rpm: float = 0
     ) -> None:
         """
-        Set stirring.
+        Sets the stirring on a specified zone.
+        Uses the 'Stir' method in AutoSuite.
 
         Args:
-            stir_zone (str): Wells to be stirred
-            state (str): stir state (on, off)
-            rpm (float): stir rotation speed (rpm)
+            stir_zone: Zone to be stirred
+            state: Stir state (on, off)
+            rpm: Stir rotation speed [rpm]
         """
         stir_zone = WellGroup(stir_zone, self.wells, logger=self.logger)
         stir_zone.set_parameter("stir", state)
@@ -501,11 +520,14 @@ class Controller(object):
             state: str,
             vacuum: float = 1000
     ) -> None:
-        """Setting ISYNTH vacuum pressure.
+        """
+        DEPRECATED: Use set_vacuum with zone specification instead. 
+        
+        Sets the vacuum pressure and status on the ISYNTH. 
 
         Args:
-            state (str): vacuum pump state (on, off)
-            vacuum (float): vacuum pressure level (mbar)
+            state: Vacuum pump state (on, off)
+            vacuum: Vacuum pressure level [mbar]
         """
         self.set_vacuum("ISYNTH:1", state, vacuum)
 
@@ -517,11 +539,12 @@ class Controller(object):
     ) -> None:
         """
         Sets the heating temperature for a given element.
+        Uses the 'Set Vacuum' method in AutoSuite.
 
         Args:
             vac_zone: Zone to be set under vacuum
             state: Vacuum pump state state (on, off)
-            vacuum: Pressure to set the vacuum pump to (in mbar).
+            vacuum: Pressure to set the vacuum pump to [mbar].
         """
         vac_zone = WellGroup(vac_zone, self.wells, logger=self.logger)
         vac_zone.set_parameter("vacuum_pump", state)
@@ -542,15 +565,18 @@ class Controller(object):
             self,
             **kwargs: Optional[Union[str, float]]
     ) -> None:
-        """Setting ISYNTH values. The following values can be [None, str, float]. If set at None, no change to current state.
+        """
+        DEPRECATED: Use the set_vacuum, set_stir, set_temperature, set_reflux methods with zone specification instead. 
+        
+        Setting ISYNTH values. The following values can be [None, str, float]. If set at None, no change to current state.
         If "off" then turns off. If set to a value, then the system will turn on and set to that value.
         You have to specify the values to be set. For example, set_isynth(reflux=15) not set_isynth(15).
 
         Args:
-            reflux: vacuum pressure level (C)
-            temperature: vacuum pressure level (C)
-            stir: vacuum pressure level (rpm)
-            vacuum: vacuum pressure level (mbar)
+            reflux: vacuum pressure level [mbar]
+            temperature: vacuum pressure level [C]
+            stir: vacuum pressure level [rpm]
+            vacuum: vacuum pressure level [mbar]
         """
         for key in ['reflux', 'temperature', 'stir', 'vacuum']:
             value = kwargs.get(key, None)
@@ -576,11 +602,11 @@ class Controller(object):
         """ Vial Transport
 
         Args (float for non specified type):
-            source: vial zone for transfer
-            destination: zone for vial destination
-            gripping_force: gripping force for picking up the vials (N)
-            gripping_depth: gripping depth for the distance (down) to picking it up (mm)
-            push_in: False if the vial should be dropped into the position (for the last mm)
+            source: Source zone for vial for transfer
+            destination: Zone for vial destination
+            gripping_force: Gripping force for picking up the vials [N]
+            gripping_depth: Gripping depth for the distance (down) to picking it up [mm]
+            push_in: False if the vial should be dropped into the position (for the last mm).
             grip_inside: True if the vial should be gripped from the inside of the neck.
         """
         source = WellGroup(source, well_configuration=self.wells, logger=self.logger)
@@ -603,12 +629,12 @@ class Controller(object):
             zone: Zone,
             state: bool = True
     ) -> None:
-        """Setting the 'Enabled' state of the zone. Certain operations may turn off the availability of a zone.
-        Use this to re-enable. For example, solid dispensing error may result in disabling the powder container to be used.
-
+        """
+        Method to re-set the 'enabled' state of a zone on AutoSuite. Certain operations may turn off the availability of a zone.
+        
         Args:
-            zone (str, list): zones to change the state
-            state (bool): Enable or disable (True, False)
+            zone: Zone to change the state
+            state: Target status: Enable (True) or Disable (False)
         """
         zone = WellGroup(zone, well_configuration=self.wells, logger=self.logger)
 
@@ -624,10 +650,14 @@ class Controller(object):
             self,
             zone: Zone
     ) -> List[float]:
-        """Measure material level.
+        """
+        Measure the material level in a certain well.
 
         Args:
-            zone (Zone): zones to measure
+            Zone: Zones to measure the volume in.
+
+        Returns:
+            List[float]: List of determined quantities per well.     
         """
         zone = WellGroup(zone, well_configuration=self.wells, logger=self.logger)
 
@@ -641,25 +671,29 @@ class Controller(object):
         return [float(level) for level in self.chemspeed.return_data]
 
     def unmount_all(self):
-        """Unmounting all equipment from the arm"""
+        """
+        Unmount all tools from the arm. 
+        """
         self.chemspeed.execute('unmount_all')
 
     def stop_manager(self):
-        """Stopping the manager safely from the python controller"""
+        """
+        Stops the manager safely from the python controller.
+        """
         self.chemspeed.execute('stop_manager')
 
     def read_status(
             self,
             key: Optional[str] = None
     ) -> Union[Dict[str, float], float]:
-        """Reading the Chemspeed status during idle.
+        """
+        Reads the Chemspeed status while the instrument is idle.
 
         Args:
-            key (None, str): Status to read (from the specified keys in self.status_keys)
+            key: Status to read (from the specified keys in self.status_keys)
 
         Returns:
-            values: single float value of the key. dict if no key specified.
-            units: cryostat, chiller in C; vacuum in mbar, vortex in rpm
+            values: Single float value of the specified key, dictionary of all keys and values if no key is specified.
         """
         status: dict = {}
 
@@ -682,7 +716,8 @@ class Controller(object):
             duration: Union[int, float]
     ) -> None:
         """
-        Waits for a set duration of time by calling the "wait" method of AutoSuite.
+        Waits for a set duration.
+        Uses the 'Wait' method in AutoSuite.
 
         Args:
             duration: Duration of wait (in seconds)
