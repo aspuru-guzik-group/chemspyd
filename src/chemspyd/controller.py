@@ -102,7 +102,7 @@ class Controller(object):
             dst_bu: True if liquid at destination should be dispensed bottom-up.
             dst_distance: Needle bottom-up / top-down distance at the destination [mm].
             rinse_volume: Needle rinsing volume after action [mL]
-            rinse_stn: Integer number of the rinse station.   # ATTN: How generalizable is this beyond our hardware setup?
+            rinse_stn: Integer number of the rinse station.
             airgap: Airgap volume [mL]
             post_airgap: Post-airgap volume [mL]
             airgap_dst: Destination zone for airgap
@@ -311,7 +311,7 @@ class Controller(object):
         """
 
         raise NotImplementedError("This function has never been properly tested on the Manager or the hardware, and"
-                                  "can therefore not be executed via the Python controller at the current stage. ")
+                                  "can therefore not be executed via the Python controller at the current stage.")
 
         # Get different data types into uniform WellGroup data type
         source: WellGroup = WellGroup(source, well_configuration=self.wells, logger=self.logger)
